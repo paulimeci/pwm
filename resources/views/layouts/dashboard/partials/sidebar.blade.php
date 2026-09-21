@@ -34,6 +34,14 @@
                     </a>
                 </li>
             @endcan
+            @can('operatori.lavazho-operacionet')
+                <li class="menu-item">
+                    <a href="{{ route('operatori.lavazho.operacionet') }}" class="menu-link {{ request()->routeIs('operatori.lavazho.operacionet') ? 'active' : '' }}">
+                        <span class="material-symbols-outlined menu-icon">rocket_launch</span>
+                        <span class="title">{{ __('Operatori Lavazho') }}</span>
+                    </a>
+                </li>
+            @endcan
  @can('admin.manage-raportet')
                 <li class="menu-item">
                     <a href="{{ route('admin.bilanci.transaksioneve') }}" class="menu-link {{ request()->routeIs('operatori.operacionet') ? 'active' : '' }}">
@@ -87,6 +95,13 @@
                             </a>
                         </li>
                     @endcan
+                        @can('admin.lavazho-konfiguro-cmimet')
+                            <li class="menu-item">
+                                <a href="{{ route('lavazho.konfiguro.cmimet') }}" class="menu-link {{ request()->routeIs('lavazho.konfiguro.cmimet') ? 'active' : '' }}">
+                                    {{ __('Lavazho konfiguro cmimet') }}
+                                </a>
+                            </li>
+                        @endcan
                     @can('admin.manage-users')
                         <li class="menu-item">
                             <a href="{{ route('admin.users') }}" class="menu-link {{ request()->routeIs('admin.users') ? 'active' : '' }}">

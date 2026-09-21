@@ -7,6 +7,7 @@ use App\Livewire\Admin\LiveAdminKonfiguroOret;
 use App\Livewire\Admin\LiveBilanciTransaksioneve;
 use App\Livewire\Admin\ManageRoles;
 use App\Livewire\Admin\ManageUsers;
+use App\Livewire\Lavazho\LiveLavazhoKryejOperacionet;
 use App\Http\Controllers\PrintController;
 use App\Livewire\Operatori\LiveKryejOperacionet;
 use Illuminate\Support\Facades\Route;
@@ -46,7 +47,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::middleware(['can:admin.konfiguro-oret'])->group(function () {
-        Route::get('admin/konfiguo/oret', LiveAdminKonfiguroOret::class)->name('admin.manage.oret');
+        Route::get('admin/konfiguro/oret', LiveAdminKonfiguroOret::class)->name('admin.manage.oret');
+    });
+
+    Route::middleware(['can:admin.lavazho-konfiguro-cmimet'])->group(function () {
+        Route::get('lavazho/konfiguro/cmimet', \App\Livewire\Lavazho\LiveKonfiguroCmimet::class)->name('lavazho.konfiguro.cmimet');
     });
 
     Route::middleware(['can:admin.manage-users'])->group(function () {
@@ -71,6 +76,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Operatori Routes
     Route::middleware(['can:operatori.kryej-operacionet'])->group(function () {
         Route::get('operatori/operacionet', LiveKryejOperacionet::class)->name('operatori.operacionet');
+    });
+    Route::middleware(['can:operatori.lavazho-operacionet'])->group(function () {
+        Route::get('operatori/lavazho', LiveLavazhoKryejOperacionet::class)->name('operatori.lavazho.operacionet');
     });
 
     Route::get('/print/hyrje/{operacioni}', [PrintController::class, 'kuponiHyrjes'])
