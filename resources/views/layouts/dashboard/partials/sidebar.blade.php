@@ -46,7 +46,13 @@
                 <li class="menu-item">
                     <a href="{{ route('admin.bilanci.transaksioneve') }}" class="menu-link {{ request()->routeIs('operatori.operacionet') ? 'active' : '' }}">
                         <span class="material-symbols-outlined menu-icon">rocket_launch</span>
-                        <span class="title">Raportet</span>
+                        <span class="title">Raportet Parkim</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{{ route('admin.bilanci.transaksioneve.lavazho') }}" class="menu-link {{ request()->routeIs('operatori.operacionet') ? 'active' : '' }}">
+                        <span class="material-symbols-outlined menu-icon">rocket_launch</span>
+                        <span class="title">Raportet Lavazho</span>
                     </a>
                 </li>
             @endcan

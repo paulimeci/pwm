@@ -12,6 +12,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
+use App\Services\Admin\KuponLavazhoService;
+
 class LiveLavazhoKryejOperacionet extends Component
 {
     use AuthorizesRequests;
@@ -173,7 +175,7 @@ class LiveLavazhoKryejOperacionet extends Component
             return;
         }
 
-        LavazhoKryejOperacionet::create([
+        $operacioni = LavazhoKryejOperacionet::create([
             'id_operatori'       => Auth::id(),
             'targa'              => $targaPastruar,
             'id_operacionit'     => $this->reg_sherbimi,
@@ -185,10 +187,32 @@ class LiveLavazhoKryejOperacionet extends Component
             'nisja'              => now(),
         ]);
 
+        // NEW: printim i kuponit — fature nëse është paguar menjëherë, përndryshe thjesht hyrje
+        if ($this->eshte_paguar) {
+            $rezultatiPrintimit = app(KuponLavazhoService::class)->printoFaturen($operacioni, false);
+
+            if (!$rezultatiPrintimit) {
+                $rawContent = app(KuponLavazhoService::class)->buildFaturaRaw($operacioni, false);
+                $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
+            }
+        } else {
+            $rezultatiPrintimit = app(KuponLavazhoService::class)->printoHyrjen($operacioni);
+
+            if (!$rezultatiPrintimit) {
+                $rawContent = app(KuponLavazhoService::class)->buildHyrjaRaw($operacioni);
+                $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
+            }
+        }
+
         $this->reset('targa', 'reg_kategoria', 'reg_sherbimi', 'eshte_paguar');
         $this->resetErrorBag();
 
-        session()->flash('success', 'Mjeti u regjistrua me sukses si Prezent!');
+        session()->flash(
+            'success',
+            $rezultatiPrintimit
+                ? 'Mjeti u regjistrua me sukses si Prezent!'
+                : 'Mjeti u regjistrua! Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
+        );
     }
 
     // ═══════════════════════════════════════
@@ -270,7 +294,20 @@ class LiveLavazhoKryejOperacionet extends Component
             'ikja'               => now(),
         ]);
 
-        session()->flash('success', 'Operacioni u mbyll me sukses!');
+        // NEW: printim i kuponit të daljes/faturës
+        $rezultatiPrintimit = app(KuponLavazhoService::class)->printoFaturen($op, true);
+
+        if (!$rezultatiPrintimit) {
+            $rawContent = app(KuponLavazhoService::class)->buildFaturaRaw($op, true);
+            $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
+        }
+
+        session()->flash(
+            'success',
+            $rezultatiPrintimit
+                ? 'Operacioni u mbyll me sukses!'
+                : 'Operacioni u mbyll! Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
+        );
         $this->mbyllModalPagesen();
     }
 

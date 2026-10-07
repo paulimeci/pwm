@@ -8,6 +8,7 @@ use App\Livewire\Admin\LiveBilanciTransaksioneve;
 use App\Livewire\Admin\ManageRoles;
 use App\Livewire\Admin\ManageUsers;
 use App\Livewire\Lavazho\LiveLavazhoKryejOperacionet;
+use App\Livewire\Lavazho\LiveLavazhoRaportet;
 use App\Http\Controllers\PrintController;
 use App\Livewire\Operatori\LiveKryejOperacionet;
 use Illuminate\Support\Facades\Route;
@@ -65,7 +66,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['can:admin.manage-raportet'])->group(function () {
         // Kjo është tabela e bilancit që bëmë bashkë me eksportin Excel
         Route::get('admin/transaksionet', LiveBilanciTransaksioneve::class)->name('admin.bilanci.transaksioneve');
+        Route::get('admin/transaksionet/lavazho', LiveLavazhoRaportet::class)->name('admin.bilanci.transaksioneve.lavazho');
     });
+
 
     Route::middleware(['can:manage all'])->group(function () {
         Route::get('admin/gjuhët', LanguageManager::class)->name('admin.languages');

@@ -525,4 +525,18 @@ class KuponParkimiService
         return $raw;
     }
 
+    public function printoPagesenShtese(Operacionet $operacioni, TransaksioniOperacionit $transaksioniShtese): bool
+    {
+        try {
+            $content = $this->buildPagesenShteseRaw($operacioni, $transaksioniShtese);
+            return $this->sendToPrinter($content);
+        } catch (\Throwable $e) {
+            Log::error('KuponParkimiService pagesa shtese error', [
+                'operacioni_id' => $operacioni->id,
+                'message' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
 }

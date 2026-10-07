@@ -787,9 +787,6 @@ class LiveKryejOperacionet extends Component
         $operacioni = $this->mjetiSkaduarZgjedhur;
         $transaksioniOriginal = $operacioni->transaksioni;
 
-        // NEW: NJË RRESHT I VETËM me totalin e plotë (dite_plota + gjysme të bashkuara)
-        // id_prenotimit mbetet kategoria bazë (origjinale), pavarësisht se brenda saj
-        // ka njësi të plota + gjysmë — ndarja mbetet vetëm logjikë e brendshme llogaritëse
         $rreshtiIRi = TransaksioniOperacionit::create([
             'id_operacionit'  => $operacioni->id,
             'id_prenotimit'   => $this->shtese_id_kategoria_plote ?? $transaksioniOriginal->id_prenotimit,
@@ -797,7 +794,7 @@ class LiveKryejOperacionet extends Component
             'sasia'           => max($this->shtese_sasia_plote, 1),
             'status_pagesa'   => 'pagese_shtese',
             'monedha'         => $transaksioniOriginal->monedha,
-            'vlera'           => $this->vlera_shtese, // NEW: totali i plotë, jo i ndarë
+            'vlera'           => $this->vlera_shtese,
         ]);
 
         $operatoriOrigjinal = $operacioni->id_operatori;
@@ -817,10 +814,19 @@ class LiveKryejOperacionet extends Component
         $operacioni->status = 'larguar';
         $operacioni->save();
 
-        $rawContent = app(KuponParkimiService::class)->buildPagesenShteseRaw($operacioni, $rreshtiIRi, $this->vlera_shtese);
-        $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
+        // Printimi LAN i kuponit të pagesës shtesë
+        $rezultatiPrintimit = app(KuponParkimiService::class)->printoPagesenShtese($operacioni, $rreshtiIRi);
 
-        session()->flash('success', 'Operacioni u mbyll me sukses! Pagesë shtesë: +' . number_format($this->vlera_shtese, 2) . ' ' . ($transaksioniOriginal->monedhaRelacion->kodi ?? ''));
+        if (!$rezultatiPrintimit) {
+            $rawContent = app(KuponParkimiService::class)->buildPagesenShteseRaw($operacioni, $rreshtiIRi);
+            $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
+        }
+
+        session()->flash(
+            'success',
+            ($rezultatiPrintimit ? 'Operacioni u mbyll me sukses! ' : 'Operacioni u mbyll (printeri LAN nuk u përgjigj, po provohet Bluetooth). ')
+            . 'Pagesë shtesë: +' . number_format($this->vlera_shtese, 2) . ' ' . ($transaksioniOriginal->monedhaRelacion->kodi ?? '')
+        );
 
         $this->mbyllModalSkadimi();
     }
@@ -910,11 +916,10 @@ class LiveKryejOperacionet extends Component
         $transaksioniIRi = TransaksioniOperacionit::create($tedhenatTransaksionit);
 
         if ($this->eshteRegjistrimParaprak) {
-            // KOMENTUAR: Printimi i kuponit të parapagesës — LAN
-            // $rezultatiPrintimit = app(KuponParkimiService::class)->printoParapagesen(
-            //     $this->mjetiZgjedhur, $transaksioniIRi, $this->metoda_pageses
-// );
-            $rezultatiPrintimit = false;
+            // Printimi i kuponit të parapagesës — LAN, me fallback Bluetooth
+            $rezultatiPrintimit = app(KuponParkimiService::class)->printoParapagesen(
+                $this->mjetiZgjedhur, $transaksioniIRi, $this->metoda_pageses
+            );
 
             if (!$rezultatiPrintimit) {
                 $rawContent = app(KuponParkimiService::class)->buildParapagesenRaw(
@@ -927,7 +932,7 @@ class LiveKryejOperacionet extends Component
                 $rezultatiPrintimit ? 'success' : 'error',
                 $rezultatiPrintimit
                     ? 'Pagesa u regjistrua paraprakisht. Mjeti mbetet Prezent në parking.'
-                    : 'Po provohet printimi Bluetooth...'
+                    : 'Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
             );
         } else {
             $operatoriOrigjinal = $this->mjetiZgjedhur->id_operatori;
@@ -952,11 +957,10 @@ class LiveKryejOperacionet extends Component
             $this->mjetiZgjedhur->status = 'larguar';
             $this->mjetiZgjedhur->save();
 
-            // KOMENTUAR: Printimi i kuponit të daljes — LAN
-            // $rezultatiPrintimit = app(KuponParkimiService::class)->printoDaljen(
-            //     $this->mjetiZgjedhur, $transaksioniIRi, $this->metoda_pageses
-            // );
-            $rezultatiPrintimit = false;
+            // Printimi i kuponit të daljes — LAN, me fallback Bluetooth
+            $rezultatiPrintimit = app(KuponParkimiService::class)->printoDaljen(
+                $this->mjetiZgjedhur, $transaksioniIRi, $this->metoda_pageses
+            );
 
             if (!$rezultatiPrintimit) {
                 $rawContent = app(KuponParkimiService::class)->buildDaljaRaw(
@@ -969,7 +973,7 @@ class LiveKryejOperacionet extends Component
                 $rezultatiPrintimit ? 'success' : 'error',
                 $rezultatiPrintimit
                     ? 'Operacioni u mbyll me sukses!'
-                    : 'Po provohet printimi Bluetooth...'
+                    : 'Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
             );
         }
 
@@ -1013,13 +1017,11 @@ class LiveKryejOperacionet extends Component
             'status'       => 'prezent',
         ]);
 
-        // KOMENTUAR: Thirrja e Service-it për printimin LAN të Hyrjes
-        // $rezultatiPrintimit = app(KuponParkimiService::class)->printoHyrjen($operacioni);
-        $rezultatiPrintimit = false;
+        // Printimi LAN i kuponit të hyrjes
+        $rezultatiPrintimit = app(KuponParkimiService::class)->printoHyrjen($operacioni);
 
         if (!$rezultatiPrintimit) {
             $rawContent = app(KuponParkimiService::class)->buildHyrjaRaw($operacioni);
-            // Korrigjuar në 'printo-ne-bluetooth' që të përputhet me scriptin e ri
             $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
         }
 
@@ -1027,7 +1029,7 @@ class LiveKryejOperacionet extends Component
             $rezultatiPrintimit ? 'success' : 'error',
             $rezultatiPrintimit
                 ? 'Mjeti u regjistrua me sukses si Prezent!'
-                : 'Po provohet printimi Bluetooth...'
+                : 'Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
         );
 
         $this->reset('targa', 'shuma_paguar', 'eshte_paguar');
@@ -1061,17 +1063,15 @@ class LiveKryejOperacionet extends Component
             return;
         }
 
-        // KOMENTUAR: Anashkalohet tentativa LAN për të shmangur vonesat
-        // $rezultati = app(KuponParkimiService::class)->printoHistorikunMjetit($this->mjetiLarguarZgjedhur);
-        $rezultati = false;
+        // Printimi LAN i kuponit të historikut
+        $rezultati = app(KuponParkimiService::class)->printoHistorikunMjetit($this->mjetiLarguarZgjedhur);
 
         if ($rezultati) {
             session()->flash('success_modal', 'Kuponi i historikut u dërgua në printer!');
         } else {
             $rawContent = app(KuponParkimiService::class)->buildHistorikuRaw($this->mjetiLarguarZgjedhur);
-            // Korrigjuar në 'printo-ne-bluetooth' që të kapet nga scripti i ri automatik
             $this->dispatch('printo-ne-bluetooth', rawContent: $rawContent);
-            session()->flash('success_modal', 'Po provohet printimi Bluetooth...');
+            session()->flash('success_modal', 'Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...');
         }
     }
 

@@ -65,4 +65,8 @@ class User extends Authenticatable implements PasskeyUser
     {
         return $this->hasMany(\App\Models\Admin\Operacionet::class, 'id_operatori');
     }
+    public function operacionetLavazho()
+    {
+        return $this->hasMany(\App\Models\Admin\LavazhoKryejOperacionet::class, 'id_operatori');
+    }
 }

@@ -586,5 +586,57 @@
                 </div>
             </div>
         </div>
+        <div id="zonaPrintimit" style="display: none;"></div>
+
+        <style>
+            @media print {
+                body * { visibility: hidden; }
+                #zonaPrintimit, #zonaPrintimit * { visibility: visible; }
+                #zonaPrintimit {
+                    display: block !important;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 58mm;
+                    font-family: monospace;
+                    font-size: 11px;
+                    white-space: pre-wrap;
+                }
+            }
+        </style>
+
+        <script>
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('printo-ne-bluetooth', (event) => {
+                    ekzekutoPrintiminMeProtokoll(event.rawContent);
+                });
+            });
+
+            function ekzekutoPrintiminMeProtokoll(rawContent) {
+                if (!rawContent) {
+                    console.error('[RawBT] Nuk ka përmbajtje tekstuale për kuponin.');
+                    return;
+                }
+
+                try {
+                    const base64Content = btoa(unescape(encodeURIComponent(rawContent)));
+                    const schemeUrl = 'rawbt:base64,' + base64Content;
+                    window.location.href = schemeUrl;
+                } catch (error) {
+                    console.error('[RawBT] Gabim gjatë procesimit të kuponit:', error);
+                }
+            }
+
+            function pastroTekstinPerShfaqje(rawContent) {
+                return rawContent
+                    .replace(/\x1B\x40/g, '')
+                    .replace(/\x1B\x61[\x00-\x02]/g, '')
+                    .replace(/\x1B\x45[\x00-\x01]/g, '')
+                    .replace(/\x1D\x21[\x00-\x01]/g, '')
+                    .replace(/\x1D\x56\x00/g, '')
+                    .trim();
+            }
+        </script>
+</div>
     @endif
 </div>
