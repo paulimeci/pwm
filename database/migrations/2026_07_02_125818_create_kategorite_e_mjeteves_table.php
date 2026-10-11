@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('kategorite_e_mjeteve', function (Blueprint $table) {
             $table->id();
             $table->string('kategoria');
+            $table->boolean('is_default')->default(false);
             $table->timestamps();
         });
     }

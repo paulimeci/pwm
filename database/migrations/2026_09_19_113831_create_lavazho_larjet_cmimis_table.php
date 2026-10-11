@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('lavazho_larjet_cmimi', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('id_sherbimit');
-            $table->unsignedBigInteger('id_monedhes');
-            $table->unsignedBigInteger('id_kategoria_mjetit');
+            $table->foreignId('id_monedhes')->constrained('adm_monedhat')->onDelete('cascade');
+            $table->foreignId('id_kategoria_mjetit')->constrained('kategorite_e_mjeteve')->onDelete('cascade');
             $table->decimal('vlera', 10, 2);
             $table->timestamps();
         });

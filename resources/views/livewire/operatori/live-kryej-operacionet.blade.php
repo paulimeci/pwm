@@ -22,10 +22,10 @@
                     <div class="tab-pane fade show active" id="preview-tab-pane" role="tabpanel" aria-labelledby="preview-tab" tabindex="0">
 
                         <form wire:submit.prevent="ruajOperacionin">
-                            <div class="row gx-2 flex-nowrap align-items-center"> {{-- Ndryshuar në align-items-center --}}
+                            <div class="row gx-2 flex-nowrap align-items-center">
 
                                 {{-- Targa --}}
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="form-group mb-0">
                                         <label class="label text-secondary fw-medium mb-1.5 fs-11 text-nowrap" id="label-targa">{{ __('Targa') }} <span class="text-danger">*</span></label>
                                         <input type="text" wire:model="targa"
@@ -34,9 +34,22 @@
                                     </div>
                                 </div>
 
+                                {{-- Kategoria e mjetit --}}
+                                <div class="col-3">
+                                    <div class="form-group mb-0">
+                                        <label class="label text-secondary fw-medium mb-1.5 fs-11 text-nowrap">{{ __('Mjeti') }} <span class="text-danger">*</span></label>
+                                        <select wire:model="id_kategoria_mjeti"
+                                                class="form-select h-45 rounded-3 fs-13 @error('id_kategoria_mjeti') is-invalid @enderror">
+                                            <option value="">--</option>
+                                            @foreach($kategoriteMjeteve as $km)
+                                                <option value="{{ $km->id }}">{{ $km->kategoria }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
                                 {{-- Switch-i --}}
                                 <div class="col-3">
-                                    {{-- Kjo hapësirë mb-1.5 fs-11 dhe teksti i padukshëm shërben për të balancuar label-in e targës --}}
                                     <div class="text-nowrap mb-1.5 fs-11 invisible" aria-hidden="true">&nbsp;</div>
 
                                     <div class="d-flex align-items-center justify-content-center border rounded-3 bg-light w-100 px-1" style="height: 45px;">
@@ -51,8 +64,7 @@
                                 </div>
 
                                 {{-- Butoni --}}
-                                <div class="col-3">
-                                    {{-- E njëjta hapësirë e padukshme edhe këtu --}}
+                                <div class="col-2">
                                     <div class="text-nowrap mb-1.5 fs-11 invisible" aria-hidden="true">&nbsp;</div>
 
                                     <button type="submit" class="btn btn-primary h-45 w-100 rounded-3 shadow-sm d-flex align-items-center justify-content-center px-1" title="{{ __('Regjistro') }}">
@@ -65,6 +77,9 @@
                             </div>
 
                             @error('targa')
+                            <div class="text-danger mt-1 fs-11">{{ $message }}</div>
+                            @enderror
+                            @error('id_kategoria_mjeti')
                             <div class="text-danger mt-1 fs-11">{{ $message }}</div>
                             @enderror
                         </form>
@@ -188,6 +203,12 @@
     </span>
                             </div>
                         </div>
+                        <div class="text-center mb-1">
+    <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2 py-0.5 fs-10 fw-semibold">
+        <i class="material-symbols-outlined fs-12 align-middle me-0.5">directions_car</i>
+        {{ $mjeti->kategoriaMjetit->kategoria ?? '—' }}
+    </span>
+                        </div>
 
                         {{-- SEKSIONI POSHTË: STATUSI I PAGESËS --}}
                         <div class="d-flex justify-content-between align-items-center border-top border-dark border-opacity-10 pt-1.5">
@@ -275,6 +296,12 @@
                                         {{ $mjetiZgjedhur->targa }}
                                     </span>
                             </div>
+                        </div>
+                        <div class="text-center mb-3">
+    <span class="badge bg-info bg-opacity-10 text-info px-3 py-1 fs-12 fw-semibold">
+        <i class="material-symbols-outlined fs-14 align-middle me-1">directions_car</i>
+        {{ $mjetiZgjedhur->kategoriaMjetit->kategoria ?? '—' }}
+    </span>
                         </div>
 
                         <table class="table table-sm table-borderless fs-13 mb-3">
@@ -921,6 +948,17 @@
                                     <input type="datetime-local" wire:model="edit_nisja"
                                            class="form-control fs-13 py-2 rounded-3 @error('edit_nisja') is-invalid @enderror">
                                     @error('edit_nisja') <div class="invalid-feedback d-block fs-12">{{ $message }}</div> @enderror
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Kategoria e Mjetit') }}</label>
+                                    <select wire:model.live="edit_id_kategoria_mjeti" class="form-select fs-13 py-2 rounded-3 @error('edit_id_kategoria_mjeti') is-invalid @enderror">
+                                        @foreach($kategoriteMjeteve as $km)
+                                            <option value="{{ $km->id }}">{{ $km->kategoria }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('edit_id_kategoria_mjeti') <div class="invalid-feedback d-block fs-12">{{ $message }}</div> @enderror
                                 </div>
                             </div>
 

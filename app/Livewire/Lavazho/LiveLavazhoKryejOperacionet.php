@@ -23,6 +23,9 @@ class LiveLavazhoKryejOperacionet extends Component
     public $reg_kategoria = '';
     public $reg_sherbimi = '';
     public bool $eshte_paguar = false;
+    // ── Modali i pagesës gjatë regjistrimit ──
+    public bool $showModalRegPagesa = false;
+    public $reg_modal_vlera = '';
     public $monedhaDefaultId = null;
 
     // ── Kërkimi, tab-et, faqosja (mjetet prezente) ──
@@ -35,14 +38,11 @@ class LiveLavazhoKryejOperacionet extends Component
     public $dataSpecifike;
 
     // ── Modali i pagesës / largimit ──
+    // I thjeshtuar: shfaq vetëm targën dhe lejon modifikimin e vlerës.
     public bool $showModalPagesa = false;
     public $mjetiId = null;
-    public $modal_kategoria = '';
-    public $modal_sherbimi = '';
-    public $modal_monedha = '';
     public $modal_vlera = '';
     public bool $modal_eshte_paguar = false;
-    public string $koha_qendrimit = '';
 
     // ── Modali i editimit ──
     public bool $showModalEdit = false;
@@ -121,35 +121,67 @@ class LiveLavazhoKryejOperacionet extends Component
         return $sherbimet->first()?->id;
     }
 
-    private function formatoKohen(Carbon $hyrja, Carbon $fundi): string
-    {
-        $dite = (int) $hyrja->diffInDays($fundi);
-        $ore = (int) ($hyrja->diffInHours($fundi) % 24);
-        $min = (int) ($hyrja->diffInMinutes($fundi) % 60);
-
-        $pjeset = [];
-        if ($dite >= 1) { $pjeset[] = $dite . ' ditë'; }
-        if ($ore > 0) { $pjeset[] = $ore . ' orë'; }
-        if ($min > 0 || empty($pjeset)) { $pjeset[] = $min . ' min'; }
-
-        if (count($pjeset) > 1) {
-            $fundit = array_pop($pjeset);
-            return implode(', ', $pjeset) . ' e ' . $fundit;
-        }
-
-        return $pjeset[0];
-    }
-
     // ═══════════════════════════════════════
     //  REGJISTRIMI
     // ═══════════════════════════════════════
 
-    public function updatedRegKategoria()
+
+    public function updatedEshtePaguar($value)
     {
-        $this->reg_sherbimi = $this->korrigjoSherbimin($this->reg_sherbimi, $this->reg_kategoria);
+        if (! $value) {
+            return;
+        }
+
+        $this->resetErrorBag();
+
+        // Modali hapet vetëm nëse fushat bazë janë plotësuar
+        $mungon = false;
+
+        if (trim((string) $this->targa) === '') {
+            $this->addError('targa', 'Ju lutem vendosni targën e makinës.');
+            $mungon = true;
+        }
+        if (! $this->reg_kategoria) {
+            $this->addError('reg_kategoria', 'Zgjidhni kategorinë e mjetit.');
+            $mungon = true;
+        }
+        if (! $this->reg_sherbimi) {
+            $this->addError('reg_sherbimi', 'Zgjidhni shërbimin.');
+            $mungon = true;
+        }
+
+        if ($mungon) {
+            $this->eshte_paguar = false;
+            return;
+        }
+
+        $cmimi = $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->monedhaDefaultId);
+
+        $this->reg_modal_vlera = $cmimi ?? '';
+        $this->showModalRegPagesa = true;
     }
 
-    public function ruajOperacionin()
+
+    public function konfirmoModalRegPagesa()
+    {
+        $this->validate([
+            'reg_modal_vlera' => 'required|numeric|min:0',
+        ], [
+            'reg_modal_vlera.required' => 'Ju lutem vendosni vlerën e pagesës.',
+            'reg_modal_vlera.numeric'  => 'Vlera duhet të jetë numër.',
+        ]);
+
+        $vlera = (float) $this->reg_modal_vlera;
+
+        $this->showModalRegPagesa = false;
+
+        // Regjistrohet direkt me vlerën e modalit (e modifikuar ose jo)
+        if (! $this->regjistroOperacionin($vlera)) {
+            $this->eshte_paguar = false;
+        }
+    }
+
+    private function regjistroOperacionin(?float $vleraManuale = null): bool
     {
         $this->validate([
             'targa'         => 'required|string|max:20',
@@ -165,14 +197,14 @@ class LiveLavazhoKryejOperacionet extends Component
 
         if ($this->targaEkziston($targaPastruar)) {
             $this->addError('targa', 'Kjo targë është tashmë e regjistruar si "Prezent" në lavazho.');
-            return;
+            return false;
         }
 
-        $cmimi = $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->monedhaDefaultId);
+        $vlera = $vleraManuale ?? $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->monedhaDefaultId);
 
-        if ($cmimi === null) {
+        if ($vlera === null) {
             $this->addError('reg_sherbimi', 'Ky shërbim nuk ka çmim të konfiguruar për këtë kategori (ALL).');
-            return;
+            return false;
         }
 
         $operacioni = LavazhoKryejOperacionet::create([
@@ -181,13 +213,12 @@ class LiveLavazhoKryejOperacionet extends Component
             'id_operacionit'     => $this->reg_sherbimi,
             'mjeti_kategoria_id' => $this->reg_kategoria,
             'id_monedha'         => $this->monedhaDefaultId,
-            'vlera'              => $cmimi,
+            'vlera'              => $vlera,
             'status'             => 'prezent',
             'pagesa'             => $this->eshte_paguar ? 'po' : 'jo',
             'nisja'              => now(),
         ]);
 
-        // NEW: printim i kuponit — fature nëse është paguar menjëherë, përndryshe thjesht hyrje
         if ($this->eshte_paguar) {
             $rezultatiPrintimit = app(KuponLavazhoService::class)->printoFaturen($operacioni, false);
 
@@ -204,7 +235,7 @@ class LiveLavazhoKryejOperacionet extends Component
             }
         }
 
-        $this->reset('targa', 'reg_kategoria', 'reg_sherbimi', 'eshte_paguar');
+        $this->reset('targa', 'reg_kategoria', 'reg_sherbimi', 'eshte_paguar', 'reg_modal_vlera', 'showModalRegPagesa');
         $this->resetErrorBag();
 
         session()->flash(
@@ -213,10 +244,40 @@ class LiveLavazhoKryejOperacionet extends Component
                 ? 'Mjeti u regjistrua me sukses si Prezent!'
                 : 'Mjeti u regjistrua! Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
         );
+
+        return true;
     }
+
+
+    public function mbyllModalRegPagesa()
+    {
+        // Anulimi: kthe switch-in në "jo"
+        $this->showModalRegPagesa = false;
+        $this->eshte_paguar = false;
+        $this->reg_modal_vlera = '';
+        $this->resetErrorBag('reg_modal_vlera');
+    }
+
+    public function updatedRegKategoria()
+    {
+        $this->reg_sherbimi = $this->korrigjoSherbimin($this->reg_sherbimi, $this->reg_kategoria);
+    }
+
+    public function ruajOperacionin()
+    {
+        // Nëse "Paguar?" është aktiv, vlera merret nga modali
+        if ($this->eshte_paguar) {
+            $this->updatedEshtePaguar(true);
+            return;
+        }
+
+        $this->regjistroOperacionin();
+    }
+
 
     // ═══════════════════════════════════════
     //  MODALI I PAGESËS / LARGIMIT
+    //  (i thjeshtuar: vetëm targa + vlera e modifikueshme)
     // ═══════════════════════════════════════
 
     public function hapModalPagesen($id)
@@ -229,49 +290,16 @@ class LiveLavazhoKryejOperacionet extends Component
 
         $this->resetErrorBag();
         $this->mjetiId = $op->id;
-        $this->modal_kategoria = $op->mjeti_kategoria_id;
-        $this->modal_sherbimi = $op->id_operacionit;
-        $this->modal_monedha = $op->id_monedha;
         $this->modal_vlera = $op->vlera;
         $this->modal_eshte_paguar = $op->pagesa === 'po';
-        $this->koha_qendrimit = $this->formatoKohen(Carbon::parse($op->nisja), Carbon::now());
-
-        if (! $this->modal_eshte_paguar) {
-            $this->rillogaritModal();
-        }
 
         $this->showModalPagesa = true;
-    }
-
-    public function updatedModalKategoria()
-    {
-        $this->modal_sherbimi = $this->korrigjoSherbimin($this->modal_sherbimi, $this->modal_kategoria);
-        $this->rillogaritModal();
-    }
-
-    public function updatedModalSherbimi()
-    {
-        $this->rillogaritModal();
-    }
-
-    public function updatedModalMonedha()
-    {
-        $this->rillogaritModal();
-    }
-
-    private function rillogaritModal()
-    {
-        $cmimi = $this->gjejCmimin($this->modal_sherbimi, $this->modal_kategoria, $this->modal_monedha);
-        $this->modal_vlera = $cmimi !== null ? $cmimi : '';
     }
 
     public function perfundoOperacionin()
     {
         $this->validate([
-            'modal_kategoria' => 'required',
-            'modal_sherbimi'  => 'required',
-            'modal_monedha'   => 'required',
-            'modal_vlera'     => 'required|numeric|min:0',
+            'modal_vlera' => 'required|numeric|min:0',
         ], [
             'modal_vlera.required' => 'Ju lutem vendosni vlerën e pagesës.',
             'modal_vlera.numeric'  => 'Vlera duhet të jetë numër.',
@@ -285,16 +313,13 @@ class LiveLavazhoKryejOperacionet extends Component
         }
 
         $op->update([
-            'id_operacionit'     => $this->modal_sherbimi,
-            'mjeti_kategoria_id' => $this->modal_kategoria,
-            'id_monedha'         => $this->modal_monedha,
-            'vlera'              => (float) $this->modal_vlera,
-            'pagesa'             => 'po',
-            'status'             => 'larguar',
-            'ikja'               => now(),
+            'vlera'  => (float) $this->modal_vlera,
+            'pagesa' => 'po',
+            'status' => 'larguar',
+            'ikja'   => now(),
         ]);
 
-        // NEW: printim i kuponit të daljes/faturës
+        // Printim i kuponit të daljes/faturës
         $rezultatiPrintimit = app(KuponLavazhoService::class)->printoFaturen($op, true);
 
         if (!$rezultatiPrintimit) {
@@ -313,10 +338,7 @@ class LiveLavazhoKryejOperacionet extends Component
 
     public function mbyllModalPagesen()
     {
-        $this->reset([
-            'showModalPagesa', 'mjetiId', 'modal_kategoria', 'modal_sherbimi',
-            'modal_monedha', 'modal_vlera', 'modal_eshte_paguar', 'koha_qendrimit',
-        ]);
+        $this->reset(['showModalPagesa', 'mjetiId', 'modal_vlera', 'modal_eshte_paguar']);
         $this->resetErrorBag();
     }
 
@@ -562,7 +584,6 @@ class LiveLavazhoKryejOperacionet extends Component
             'kategorite'     => KategoriteEMjeteve::orderBy('kategoria')->get(),
             'monedhat'       => Monedhat::all(),
             'sherbimetReg'   => $this->sherbimetPerKategori($this->reg_kategoria),
-            'sherbimetModal' => $this->sherbimetPerKategori($this->modal_kategoria),
             'sherbimetEdit'  => $this->sherbimetPerKategori($this->edit_kategoria),
             'cmimiPreview'   => $cmimiPreview,
             'mjetePrezent'   => $mjetePrezent,
@@ -570,7 +591,10 @@ class LiveLavazhoKryejOperacionet extends Component
             'faqetPrezent'   => $faqetPrezent,
             'mjeteLarguar'   => $mjeteLarguar,
             'totaletLarguar' => $totaletLarguar,
-            'mjetiModal'     => $this->mjetiId ? LavazhoKryejOperacionet::find($this->mjetiId) : null,
+            // Me relacionet e ngarkuara që modali i thjeshtuar të ketë targën/shërbimin/monedhën pa query shtesë
+            'mjetiModal'     => $this->mjetiId
+                ? LavazhoKryejOperacionet::with(['sherbimi', 'monedha'])->find($this->mjetiId)
+                : null,
             'mjetiDetaje'    => $this->detajeId
                 ? LavazhoKryejOperacionet::with(['operatori', 'sherbimi', 'kategoria', 'monedha'])->find($this->detajeId)
                 : null,

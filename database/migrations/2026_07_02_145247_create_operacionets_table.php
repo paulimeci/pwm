@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->integer('id_operatori');
             $table->string('targa', 20);
+            $table->foreignId('id_kategoria_mjeti')
+                ->nullable()->constrained('kategorite_e_mjeteve')
+                ->nullOnDelete();
             $table->dateTime('nisja');
             $table->dateTime('ikja')->nullable();
             $table->enum('status', ['prezent', 'larguar'])->default('prezent');

@@ -36,7 +36,6 @@
                 $aktive = $filterKatId === $kategoria->id;
             @endphp
             <div class="col-xxl-2 col-xl-2 col-md-3 col-sm-4 col-6">
-                {{-- RIPARUAR: Klikimi tani ndryshon variablën direkt me $set për siguri të lartë në Livewire --}}
                 <div class="card border border-{{ $color }} border-opacity-25 rounded-3 mb-3 bg-{{ $color }} bg-opacity-10
                             {{ $aktive ? 'border-2 border-' . $color . ' border-opacity-100 shadow-sm' : '' }}"
                      wire:click="$set('filterKatId', {{ $kategoria->id }})"
@@ -81,8 +80,9 @@
     <div class="card bg-white border-0 rounded-3 mb-4">
         <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
                     <h5 class="mb-0 fw-semibold">{{ __('Orët & Çmimet') }}</h5>
+
                     @if($filterKatId)
                         @php $katAktive = $kategorite->firstWhere('id', $filterKatId); @endphp
                         @if($katAktive)
@@ -98,10 +98,19 @@
                     @endif
                 </div>
 
-                {{-- Formë kërkimi (Search) --}}
-                <div class="position-relative table-src-form me-0">
-                    <input wire:model.live.debounce.300ms="search" type="text" class="form-control ps-5" placeholder="{{ __('Kërko fashë orësh...') }}">
-                    <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y ms-3">search</i>
+                {{-- Filtri sipas mjetit + Kërkimi --}}
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <select wire:model.live="filterMjetId" class="form-select rounded-2" style="min-width: 190px;">
+                        <option value="">{{ __('Të gjitha mjetet') }}</option>
+                        @foreach($kategoriteMjeteve as $km)
+                            <option value="{{ $km->id }}">{{ $km->kategoria }}</option>
+                        @endforeach
+                    </select>
+
+                    <div class="position-relative table-src-form me-0">
+                        <input wire:model.live.debounce.300ms="search" type="text" class="form-control ps-5" placeholder="{{ __('Kërko fashë orësh...') }}">
+                        <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y ms-3">search</i>
+                    </div>
                 </div>
             </div>
 
@@ -113,6 +122,7 @@
                         <tr>
                             <th scope="col">{{ __('ID') }}</th>
                             <th scope="col">{{ __('Kategoria') }}</th>
+                            <th scope="col">{{ __('Kategoria e Mjetit') }}</th>
                             <th scope="col">{{ __('Intervali / Mënyra Kohore') }}</th>
                             <th scope="col">{{ __('Çmimi Kryesor (ALL)') }}</th>
                             <th scope="col">{{ __('Çmime të tjera') }}</th>
@@ -129,7 +139,12 @@
                                     </span>
                                 </td>
                                 <td>
-                                    {{-- INTEGRUAR: Shfaqja inteligjente sipas strukturës së re të databazës --}}
+                                    <span class="badge bg-info bg-opacity-10 text-info px-2 py-1 fs-11 fw-semibold rounded-2">
+                                        <i class="material-symbols-outlined fs-13 align-middle me-1">directions_car</i>
+                                        {{ $konfig->kategoriaMjetit->kategoria ?? '—' }}
+                                    </span>
+                                </td>
+                                <td>
                                     @if($konfig->ora_nisje)
                                         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1.5 font-mono fs-12 rounded-2">
                                             <i class="ri-time-line me-1"></i> Orar Muri: {{ $konfig->ora_nisje }} - {{ $konfig->ora_mbarimi }}
@@ -178,7 +193,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-5 fs-14">
+                                <td colspan="7" class="text-center text-muted py-5 fs-14">
                                     <i class="material-symbols-outlined fs-48 d-block mb-2 text-secondary">hourglass_empty</i>
                                     {{ __('Nuk ka asnjë konfigurim të regjistruar për këtë kategori.') }}
                                 </td>
@@ -207,7 +222,7 @@
                     </div>
                     <div class="modal-body pt-3">
 
-                        {{-- Kategoria --}}
+                        {{-- Kategoria e Rezervimit --}}
                         <div class="mb-3">
                             <label class="form-label fw-medium text-secondary small text-uppercase">{{ __('Kategoria e Rezervimit') }} <span class="text-danger">*</span></label>
                             <select wire:model="id_kategoria_rezervimit"
@@ -219,6 +234,20 @@
                                 @endforeach
                             </select>
                             @error('id_kategoria_rezervimit') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Kategoria e Mjetit --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-medium text-secondary small text-uppercase">{{ __('Kategoria e Mjetit') }} <span class="text-danger">*</span></label>
+                            <select wire:model="id_kategoria_mjeti"
+                                    {{ $isViewOnly ? 'disabled' : '' }}
+                                    class="form-select rounded-2 @error('id_kategoria_mjeti') is-invalid @enderror">
+                                <option value="">-- {{ __('Zgjidh Kategorinë e Mjetit') }} --</option>
+                                @foreach($kategoriteMjeteve as $km)
+                                    <option value="{{ $km->id }}">{{ $km->kategoria }}</option>
+                                @endforeach
+                            </select>
+                            @error('id_kategoria_mjeti') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         {{-- SWITCH SELECTOR: Lejon zgjedhjen e llojit të inputit --}}
@@ -235,10 +264,9 @@
                             </span>
                         </div>
 
-                        {{-- INPUTET DINAMIKE (Ndryshojnë në bazë të vlerës së Switch-it lart) --}}
+                        {{-- INPUTET DINAMIKE --}}
                         <div class="row g-2 mb-3">
                             @if($is_orar_muri)
-                                {{-- NDRYSHIMI: Inputet tani janë të tipit "time" për përzgjedhje automatike --}}
                                 <div class="col-6">
                                     <label class="form-label fw-medium text-secondary small text-uppercase">{{ __('Ora e Nisjes') }} <span class="text-danger">*</span></label>
                                     <input wire:model="ora_fillestare" type="time" {{ $isViewOnly ? 'disabled' : '' }}
@@ -252,7 +280,6 @@
                                     @error('ora_limit') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
                             @else
-                                {{-- Inputet për formatin Sasi Kohëzgjatje (numër i thjeshtë) mbeten njësoj --}}
                                 <div class="col-6">
                                     <label class="form-label fw-medium text-secondary small text-uppercase">{{ __('Nga (Orë)') }} <span class="text-danger">*</span></label>
                                     <input wire:model="ora_fillestare" type="number" step="0.5" min="0"

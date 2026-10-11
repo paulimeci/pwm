@@ -59,6 +59,10 @@ class Operacionet extends Model
         return $this->hasMany(TransaksioniOperacionit::class, 'id_operacionit')
             ->where('status_pagesa', 'pagese_shtese');
     }
+    public function kategoriaMjetit(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Admin\KategoriteEMjeteve::class, 'id_kategoria_mjeti');
+    }
 
     public function getVleraShteseTotaleAttribute()
     {

@@ -77,106 +77,79 @@ class KuponLavazhoService
      * KUPONI I HYRJES (pa vlerë — regjistrim i thjeshtë, pa paguar)
      * =========================================================
      */
+    /**
+     * =========================================================
+     * KUPONI I HYRJES (pa paguar) — format i reduktuar
+     * =========================================================
+     */
     protected function buildHyrjaContent(LavazhoKryejOperacionet $operacioni): string
     {
-        $operacioni->loadMissing(['sherbimi', 'kategoria']);
-
-        $content = '';
-        $content .= $this->initPrinter();
-        $content .= $this->alignCenter();
-
-        $content .= $this->textDoubleHeightOn();
-        $content .= $this->centerLine('LAVAZHO');
-        $content .= $this->textDoubleHeightOff();
-        $content .= $this->centerLine('Kuponi i Hyrjes');
-        $content .= $this->separator('=');
-
-        $content .= $this->textDoubleHeightOn();
-        $content .= $this->centerLine($this->normalizeText($operacioni->targa));
-        $content .= $this->textDoubleHeightOff();
-        $content .= $this->separator('-');
-
-        $content .= $this->alignLeft();
-        $content .= $this->kvLine('Data', $operacioni->nisja->format('d/m/Y'));
-        $content .= $this->kvLine('Ora Hyrjes', $operacioni->nisja->format('H:i'));
-        $content .= $this->kvLine('Kategoria', $operacioni->kategoria->kategoria ?? '-');
-        $content .= $this->kvLine('Sherbimi', $operacioni->sherbimi->sherbimi ?? '-');
-        $content .= $this->kvLine('Nr. Bilete', '#' . str_pad($operacioni->id, 6, '0', STR_PAD_LEFT));
-
-        $content .= $this->separator('=');
-        $content .= $this->alignCenter();
-        $content .= $this->centerLine('Ju lutem ruajeni kete kupon');
-        $content .= "\n\n";
-        $content .= $this->cutPaper();
-
-        return $content;
+        return $this->buildKuponContent($operacioni, false);
     }
 
     /**
      * =========================================================
-     * KUPONI I FATURËS (parapagesë në regjistrim ose mbyllje/dalje reale)
+     * KUPONI I FATURËS (paguar në regjistrim ose në dalje) — format i reduktuar
      * =========================================================
      */
     protected function buildFaturaContent(LavazhoKryejOperacionet $operacioni, bool $eshteDalje): string
     {
+        return $this->buildKuponContent($operacioni, $eshteDalje);
+    }
+
+    /**
+     * Kuponi i përbashkët: targa, ora e veprimit, kategoria, shërbimi, çmimi, statusi i pagesës.
+     */
+    protected function buildKuponContent(LavazhoKryejOperacionet $operacioni, bool $eshteDalje): string
+    {
         $operacioni->loadMissing(['sherbimi', 'kategoria', 'monedha']);
+
+        $paguar = $operacioni->pagesa === 'po';
+
+        // Ora e veprimit: ora e daljes nëse po largohet, përndryshe ora e regjistrimit
+        $oraVeprimit = ($eshteDalje && $operacioni->ikja) ? $operacioni->ikja : $operacioni->nisja;
 
         $content = '';
         $content .= $this->initPrinter();
         $content .= $this->alignCenter();
 
+        // Titulli
+        $content .= $this->textEmphasizedOn();
         $content .= $this->textDoubleHeightOn();
         $content .= $this->centerLine('LAVAZHO');
         $content .= $this->textDoubleHeightOff();
-
-        if ($eshteDalje) {
-            $content .= $this->centerLine('Kuponi i Daljes / Fature');
-        } else {
-            $content .= $this->centerLine('Kuponi i Pageses (Parapagese)');
-        }
-
+        $content .= $this->textEmphasizedOff();
         $content .= $this->separator('=');
 
+        // Targa
         $content .= $this->textDoubleHeightOn();
         $content .= $this->centerLine($this->normalizeText($operacioni->targa));
         $content .= $this->textDoubleHeightOff();
         $content .= $this->separator('-');
 
+        // Detajet
         $content .= $this->alignLeft();
-        $content .= $this->kvLine('Hyrja', $operacioni->nisja->format('d/m/Y H:i'));
-
-        if ($eshteDalje && $operacioni->ikja) {
-            $content .= $this->kvLine('Dalja', $operacioni->ikja->format('d/m/Y H:i'));
-        } else {
-            $content .= $this->kvLine('Statusi', 'PREZENT (parapaguar)');
-        }
-
-        $content .= $this->separator('-');
+        $content .= $this->kvLine('Ora', $oraVeprimit->format('H:i'));
         $content .= $this->kvLine('Kategoria', $operacioni->kategoria->kategoria ?? '-');
         $content .= $this->kvLine('Sherbimi', $operacioni->sherbimi->sherbimi ?? '-');
-
         $content .= $this->separator('-');
 
+        // Çmimi
         $content .= $this->alignCenter();
         $content .= $this->textEmphasizedOn();
         $content .= $this->textDoubleHeightOn();
-        $content .= $this->centerLine('TOTAL: ' . number_format($operacioni->vlera, 2) . ' ' . ($operacioni->monedha->kodi ?? ''));
+        $content .= $this->centerLine('CMIMI: ' . number_format($operacioni->vlera, 2) . ' ' . ($operacioni->monedha->kodi ?? ''));
         $content .= $this->textDoubleHeightOff();
+
+        // Statusi i pagesës
+        $content .= $this->centerLine($paguar ? 'PAGUAR' : 'PA PAGUAR');
         $content .= $this->textEmphasizedOff();
 
-        $content .= $this->separator('=');
-        $content .= $this->centerLine('Faleminderit!');
         $content .= "\n\n";
         $content .= $this->cutPaper();
 
         return $content;
     }
-
-    /**
-     * =========================================================
-     * LOW LEVEL HELPERS
-     * =========================================================
-     */
 
     protected function kvLine(string $label, string $value): string
     {
@@ -241,8 +214,9 @@ class KuponLavazhoService
     {
         $text = trim($text);
 
+        // Pa "…" (karakter shumëbyteshe që printeri e shfaq si simbole të çuditshme)
         return mb_strlen($text) > $max
-            ? mb_substr($text, 0, $max - 1) . '…'
+            ? mb_substr($text, 0, $max)
             : $text;
     }
 
