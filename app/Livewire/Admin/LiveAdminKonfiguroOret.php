@@ -8,6 +8,7 @@ use App\Models\Admin\OretCmimi;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use App\Models\Admin\KategoriteEMjeteve;
 
 class LiveAdminKonfiguroOret extends Component
 {
@@ -25,6 +26,9 @@ class LiveAdminKonfiguroOret extends Component
     public $editingId = null;
     public ?int $filterKatId = null;
     public string $search = '';
+
+    public $id_kategoria_mjeti;
+    public ?int $filterMjetId = null;
 
     public function mount()
     {
@@ -46,8 +50,8 @@ class LiveAdminKonfiguroOret extends Component
     {
         return [
             'id_kategoria_rezervimit' => ['required', 'exists:adm_kategoria_pageses,id'],
+            'id_kategoria_mjeti' => ['required', 'exists:kategorite_e_mjeteve,id'],
 
-            // Regex i ri kërkon ekzaktësisht dy shifra për orën (00-23) dhe dy për minutat (00-59)
             'ora_fillestare' => $this->is_orar_muri
                 ? ['required', 'regex:/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/']
                 : ['required', 'numeric', 'min:0'],
@@ -60,12 +64,10 @@ class LiveAdminKonfiguroOret extends Component
         ];
     }
 
-    /**
-     * Mesazhet e personalizuara të gabimit për validimin
-     */
     protected function messages()
     {
         return [
+            'id_kategoria_mjeti.required' => __('Zgjidhni kategorinë e mjetit.'),
             'ora_fillestare.regex' => __('Formati duhet të jetë ekzaktësisht HH:MM (p.sh. 14:00 ose 09:00).'),
             'ora_limit.regex' => __('Formati duhet të jetë ekzaktësisht HH:MM (p.sh. 22:00 ose 19:00).'),
             'ora_fillestare.numeric' => __('Vendosni një numër të vlefshëm për orët.'),
@@ -75,23 +77,26 @@ class LiveAdminKonfiguroOret extends Component
 
     public function hapModalin()
     {
-        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'editingId', 'isViewOnly', 'id_kategoria_rezervimit', 'is_orar_muri']);
+        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'editingId', 'isViewOnly', 'id_kategoria_rezervimit', 'id_kategoria_mjeti', 'is_orar_muri']);
         $this->resetErrorBag();
 
         if ($this->filterKatId) {
             $this->id_kategoria_rezervimit = $this->filterKatId;
         }
 
+        // Kategoria e mjetit: fillimisht filtri aktiv, përndryshe ajo me is_default
+        $this->id_kategoria_mjeti = $this->filterMjetId
+            ?: KategoriteEMjeteve::where('is_default', true)->value('id');
+
         $this->showOretModal = true;
     }
 
     public function shikoOret($id)
     {
-        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'id_kategoria_rezervimit', 'is_orar_muri']);
+        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'id_kategoria_rezervimit', 'id_kategoria_mjeti', 'is_orar_muri']);
         $fasha = DB::table('adm_oret_cmimi')->where('id', $id)->first();
         if (! $fasha) return;
 
-        // Kontrollojmë strukturen e të dhënave për të ndezur ose fikur Switch-in e modalit
         if ($fasha->ora_nisje) {
             $this->is_orar_muri = true;
             $this->ora_fillestare = $fasha->ora_nisje;
@@ -103,6 +108,7 @@ class LiveAdminKonfiguroOret extends Component
         }
 
         $this->id_kategoria_rezervimit = $fasha->id_kategoria_rezervimit;
+        $this->id_kategoria_mjeti = $fasha->id_kategoria_mjeti;
 
         $cmimet = DB::table('adm_cmimi_sipas_monedhes')->where('interval_id', $id)->get();
         foreach ($cmimet as $cmimi) {
@@ -114,13 +120,13 @@ class LiveAdminKonfiguroOret extends Component
 
     public function editOret($id)
     {
-        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'isViewOnly', 'id_kategoria_rezervimit', 'is_orar_muri']);
+        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'isViewOnly', 'id_kategoria_rezervimit', 'id_kategoria_mjeti', 'is_orar_muri']);
+        $this->resetErrorBag();
         $this->editingId = $id;
 
         $fasha = DB::table('adm_oret_cmimi')->where('id', $id)->first();
         if (! $fasha) return;
 
-        // Mbushim formën dhe përcaktojmë gjendjen e modalit automatikisht
         if ($fasha->ora_nisje) {
             $this->is_orar_muri = true;
             $this->ora_fillestare = $fasha->ora_nisje;
@@ -132,6 +138,7 @@ class LiveAdminKonfiguroOret extends Component
         }
 
         $this->id_kategoria_rezervimit = $fasha->id_kategoria_rezervimit;
+        $this->id_kategoria_mjeti = $fasha->id_kategoria_mjeti;
 
         $cmimet = DB::table('adm_cmimi_sipas_monedhes')->where('interval_id', $id)->get();
         foreach ($cmimet as $cmimi) {
@@ -145,16 +152,17 @@ class LiveAdminKonfiguroOret extends Component
         $this->validate();
 
         $katId = $this->id_kategoria_rezervimit;
+        $mjetId = $this->id_kategoria_mjeti;
 
-        // Përgatitja inteligjente e të dhënave para ruajtjes në bazuar te gjendja e switch-it
         $nga = $this->is_orar_muri ? 0 : floatval($this->ora_fillestare);
         $ne = $this->is_orar_muri ? 0 : floatval($this->ora_limit);
         $ora_nisje = $this->is_orar_muri ? $this->ora_fillestare : null;
         $ora_mbarimi = $this->is_orar_muri ? $this->ora_limit : null;
 
-        DB::transaction(function () use ($nga, $ne, $ora_nisje, $ora_mbarimi, $katId) {
+        DB::transaction(function () use ($nga, $ne, $ora_nisje, $ora_mbarimi, $katId, $mjetId) {
             $data = [
                 'id_kategoria_rezervimit' => $katId,
+                'id_kategoria_mjeti' => $mjetId,
                 'nga' => $nga,
                 'ne' => $ne,
                 'ora_nisje' => $ora_nisje,
@@ -183,7 +191,7 @@ class LiveAdminKonfiguroOret extends Component
         });
 
         $this->showOretModal = false;
-        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'editingId', 'isViewOnly', 'id_kategoria_rezervimit', 'is_orar_muri']);
+        $this->reset(['ora_fillestare', 'ora_limit', 'cmimet_monedhave', 'editingId', 'isViewOnly', 'id_kategoria_rezervimit', 'id_kategoria_mjeti', 'is_orar_muri']);
         session()->flash('message', 'Konfigurimi u ruajt me sukses.');
     }
 
@@ -197,13 +205,15 @@ class LiveAdminKonfiguroOret extends Component
     {
         $monedhat = Monedhat::all();
 
-        // Query që merr fashat kohore duke filtruar sipas kërkimit ose kategorisë së zgjedhur
-        $fashat = OretCmimi::with(['cmimet.monedha', 'kategoria'])
+        $fashat = OretCmimi::with(['cmimet.monedha', 'kategoria', 'kategoriaMjetit'])
             ->when($this->filterKatId, function ($query) {
                 $query->where('id_kategoria_rezervimit', $this->filterKatId);
             })
+            ->when($this->filterMjetId, function ($query) {
+                $query->where('id_kategoria_mjeti', $this->filterMjetId);
+            })
             ->when($this->search, function ($query) {
-                $query->where(function($q) {
+                $query->where(function ($q) {
                     $q->where('ora_nisje', 'like', '%' . $this->search . '%')
                         ->orWhere('ora_mbarimi', 'like', '%' . $this->search . '%')
                         ->orWhere('nga', 'like', '%' . $this->search . '%')
@@ -222,6 +232,7 @@ class LiveAdminKonfiguroOret extends Component
             'monedhat' => $monedhat,
             'konfigurimet' => $konfigurimet,
             'kategorite' => KategoriaPageses::get(),
+            'kategoriteMjeteve' => KategoriteEMjeteve::orderBy('kategoria')->get(),
         ])->layout('layouts.dashboard.app');
     }
 }

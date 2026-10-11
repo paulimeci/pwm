@@ -269,15 +269,39 @@ class LiveLavazhoRaportet extends Component
         );
     }
 
+    /**
+     * Llogarit totalet për shumatorën në fund të tabelës.
+     */
+    private function llogaritTotalet($raportet)
+    {
+        $totalet = [
+            'nr_larjeve'       => 0,
+            'pagesa_lek'       => 0,
+            'monedhat_e_tjera' => [],
+        ];
+
+        foreach ($raportet as $rreshti) {
+            $totalet['nr_larjeve'] += $rreshti['nr_mjeteve'];
+            $totalet['pagesa_lek'] += $rreshti['pagesa_lek'];
+
+            foreach ($rreshti['monedhat_e_tjera'] as $kodi => $vlera) {
+                if (!isset($totalet['monedhat_e_tjera'][$kodi])) {
+                    $totalet['monedhat_e_tjera'][$kodi] = 0;
+                }
+                $totalet['monedhat_e_tjera'][$kodi] += $vlera;
+            }
+        }
+
+        return $totalet;
+    }
+
     public function render()
     {
         [$fillimi, $fundi] = $this->resolveDateRange();
 
         $raportetFormatizuar = $this->ndertoRaportinFormatizuar($fillimi, $fundi);
+        $totalet = $this->llogaritTotalet($raportetFormatizuar);
 
-        // Lista e operatorëve që kanë të paktën 1 operacion lavazho, për dropdown-in e filtrit.
-        // KËRKON relacionin hasMany 'operacionetLavazho' në modelin User -> ndryshoje emrin
-        // nëse e ke të quajtur ndryshe.
         $operatoret = User::query()
             ->whereHas('operacionetLavazho')
             ->orderBy('name')
@@ -285,6 +309,7 @@ class LiveLavazhoRaportet extends Component
 
         return view('livewire.lavazho.live-lavazho-raportet', [
             'raportet'   => $raportetFormatizuar,
+            'totalet'    => $totalet,
             'fillimi'    => $fillimi,
             'fundi'      => $fundi,
             'operatoret' => $operatoret,

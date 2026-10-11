@@ -19,4 +19,9 @@ class OretCmimi extends Model
     public function kategoria() : BelongsTo {
         return $this->belongsTo(KategoriaPageses::class, 'id_kategoria_rezervimit');
     }
+
+    public function kategoriaMjetit(): BelongsTo
+    {
+        return $this->belongsTo(KategoriteEMjeteve::class, 'id_kategoria_mjeti');
+    }
 }

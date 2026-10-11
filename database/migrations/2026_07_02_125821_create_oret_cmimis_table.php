@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('adm_oret_cmimi', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_kategoria_rezervimit')->constrained('adm_kategoria_pageses')->onDelete('cascade');
-            $table->double('nga');
+            $table->foreignId('id_kategoria_mjeti')->constrained('kategorite_e_mjeteve')->onDelete('cascade');
             $table->double('ne');
             $table->string('ora_nisje', 5)->nullable();
             $table->string('ora_mbarimi', 5)->nullable();

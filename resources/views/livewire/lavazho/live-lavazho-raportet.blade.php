@@ -137,7 +137,7 @@
                                     {{ \Carbon\Carbon::parse($rreshti['data'])->format('d/m/Y') }}
                                 </td>
                                 <td class="text-dark fw-bold">
-                                    {{ $rreshti['nr_mjeteve'] }} Mjete
+                                    {{ $rreshti['nr_mjeteve'] }} {{ __('Larje') }}
                                 </td>
                                 <td class="text-success fw-bold">
                                     {{ number_format($rreshti['pagesa_lek'], 2) }} LEK
@@ -172,6 +172,38 @@
                                 </td>
                             </tr>
                         @endforelse
+                        {{-- ═══════════════════════════════════════
+      SHUMATORJA
+     ════════════════════════════════════════ --}}
+                        @if($raportet->count() > 0)
+                            <tr class="bg-light-subtle border-top border-2 border-dark-subtle align-middle">
+                                <td colspan="2" class="text-end fw-bold text-uppercase fs-12 text-secondary py-3">
+                                    <i class="ri-calculator-line me-1 fs-14"></i> {{ __('TOTALI') }}:
+                                </td>
+                                <td class="fw-bold text-dark fs-14 py-3">
+            <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle px-2 py-1 fs-13">
+                {{ $totalet['nr_larjeve'] }} {{ __('Larje') }}
+            </span>
+                                </td>
+                                <td class="text-success fw-black fs-15 py-3 font-monospace">
+                                    {{ number_format($totalet['pagesa_lek'], 2) }} <small class="fs-12 text-muted fw-normal">LEK</small>
+                                </td>
+                                <td class="py-3">
+                                    @if(!empty($totalet['monedhat_e_tjera']))
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach($totalet['monedhat_e_tjera'] as $kodiMonedhes => $vleraMonedhes)
+                                                <span class="badge bg-white text-dark border border-light-subtle shadow-sm fw-bold fs-12 font-monospace px-2 py-1">
+                            {{ number_format($vleraMonedhes, 2) }} <span class="text-muted fs-11">{{ $kodiMonedhes }}</span>
+                        </span>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="text-muted fs-12">-</span>
+                                    @endif
+                                </td>
+                                <td></td>
+                            </tr>
+                        @endif
                         </tbody>
                     </table>
                 </div>
@@ -190,10 +222,16 @@
 
                     <div class="modal-header bg-white border-bottom border-light-subtle py-3 px-4">
                         <h5 class="modal-title fw-bold text-dark fs-18 d-flex align-items-center">
-                        <span class="p-2 bg-primary-subtle text-primary rounded-3 me-2 d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                            <i class="ri-car-washing-line fs-18"></i>
-                        </span>
-                            <span>Detajet e Lavazhove për Datën: <span class="text-primary fw-black font-monospace ms-1">{{ $dataEPerzgjedhur }}</span></span>
+    <span class="p-2 bg-primary-subtle text-primary rounded-3 me-2 d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+        <i class="ri-car-washing-line fs-18"></i>
+    </span>
+                            <span>
+        Detajet e Lavazhove për Datën:
+        <span class="text-primary fw-black font-monospace ms-1">{{ $dataEPerzgjedhur }}</span>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 fs-12">
+            {{ count($detajetMjeteve) }} {{ __('Larje') }}
+        </span>
+    </span>
                         </h5>
                         <button type="button" class="btn-close shadow-none" wire:click="mbyllModalin()"></button>
                     </div>

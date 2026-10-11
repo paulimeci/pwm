@@ -54,8 +54,7 @@
                             <div class="d-flex align-items-center justify-content-center border rounded-3 bg-light px-2" style="height: 45px;">
                                 <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-2">
                                     <input class="form-check-input m-0" type="checkbox" role="switch" id="paguarSwitch"
-                                           wire:model="eshte_paguar" style="width: 2.2em; height: 1.1em; cursor: pointer;">
-                                    <label class="text-secondary fw-medium fs-11 mb-0 text-nowrap" for="paguarSwitch" style="cursor: pointer;">
+                                           wire:model.live="eshte_paguar" style="width: 2.2em; height: 1.1em; cursor: pointer;">                                    <label class="text-secondary fw-medium fs-11 mb-0 text-nowrap" for="paguarSwitch" style="cursor: pointer;">
                                         {{ __('Paguar?') }}
                                     </label>
                                 </div>
@@ -79,6 +78,45 @@
             </form>
         </div>
     </div>
+    {{-- ═══════════════════════════════════════
+      MODAL: PAGESA GJATË REGJISTRIMIT
+     ════════════════════════════════════════ --}}
+    @if($showModalRegPagesa)
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1055;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 bg-white shadow rounded-3">
+
+                    <div class="modal-header border-bottom p-4 justify-content-center position-relative">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-light border border-dark border-2 rounded-2 px-4 py-1" style="min-width: 160px; height: 45px;">
+                            <span class="fs-20 fw-black text-dark font-monospace text-uppercase" style="letter-spacing: 0.8px;">{{ strtoupper(str_replace(' ', '', $targa)) }}</span>
+                        </div>
+                        <button type="button" class="btn-close shadow-none position-absolute top-0 end-0 m-3" wire:click="mbyllModalRegPagesa"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Vlera për t\'u Paguar') }} <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0" wire:model="reg_modal_vlera"
+                                   wire:keydown.enter.prevent="konfirmoModalRegPagesa" autofocus
+                                   class="form-control fs-14 fw-semibold py-2 rounded-start-3 @error('reg_modal_vlera') is-invalid @enderror" placeholder="0.00">
+                            <span class="input-group-text bg-light text-secondary fw-bold fs-12 rounded-end-3">ALL</span>
+                        </div>
+                        @error('reg_modal_vlera') <div class="invalid-feedback d-block mt-1 fs-12">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="modal-footer border-top p-3 d-flex justify-content-end gap-2 bg-light bg-opacity-50">
+                        <button type="button" class="btn btn-secondary py-2 px-3 fs-13 fw-semibold rounded-3 text-dark border-0 bg-gray bg-opacity-10" wire:click="mbyllModalRegPagesa">
+                            {{ __('Anulo') }}
+                        </button>
+                        <button type="button" class="btn btn-success py-2 px-3 fs-13 fw-semibold rounded-3 text-white" wire:click="konfirmoModalRegPagesa" wire:loading.attr="disabled" wire:target="konfirmoModalRegPagesa">
+                            <span wire:loading wire:target="konfirmoModalRegPagesa" class="spinner-border spinner-border-sm me-1"></span>
+                            <i class="ri-check-line me-1" wire:loading.remove wire:target="konfirmoModalRegPagesa"></i> {{ __('Konfirmo & Ruaj') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- ═══════════════════════════════════════
           SEKSIONI 2: KËRKIMI DHE MJETET PREZENT
@@ -195,6 +233,8 @@
 
     {{-- ═══════════════════════════════════════
           MODAL: PAGESA / LARGIMI
+          (I THJESHTUAR: vetëm targa + vlera e modifikueshme,
+           pa kohë qëndrimi, pa ndryshim kategorie/shërbimi/monedhe)
          ════════════════════════════════════════ --}}
     @if($showModalPagesa && $mjetiModal)
         <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
@@ -210,80 +250,29 @@
                     </div>
 
                     <div class="modal-body p-4">
-                        <div class="text-center mb-4">
+                        <div class="text-center mb-3">
                             <div class="d-inline-flex align-items-center justify-content-center bg-light border border-dark border-2 rounded-2 px-4 py-1" style="min-width: 160px; height: 45px;">
                                 <span class="fs-20 fw-black text-dark font-monospace text-uppercase" style="letter-spacing: 0.8px;">{{ $mjetiModal->targa }}</span>
                             </div>
                         </div>
 
-                        <table class="table table-sm table-borderless fs-13 mb-3">
-                            <tbody>
-                            <tr class="border-bottom border-light">
-                                <td class="text-secondary py-2 fw-medium">{{ __('Koha e Hyrjes') }}:</td>
-                                <td class="text-dark py-2 fw-semibold text-end">{{ $mjetiModal->nisja->format('d/m/Y - H:i') }}</td>
-                            </tr>
-                            <tr class="border-bottom border-light bg-light bg-opacity-50">
-                                <td class="py-2 fw-bold text-danger">{{ __('Koha e Qëndrimit') }}:</td>
-                                <td class="text-danger py-2 fw-bold text-end fs-14"><i class="ri-time-line me-1"></i> {{ $koha_qendrimit }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-secondary py-2 fw-medium">{{ __('Statusi') }}:</td>
-                                <td class="py-2 text-end">
-                                    @if($modal_eshte_paguar)
-                                        <span class="badge bg-success bg-opacity-10 text-success rounded-2 px-2 py-1 fs-12 fw-bold">{{ __('Paguar') }}</span>
-                                    @else
-                                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-2 px-2 py-1 fs-12 fw-bold">{{ __('Pa Paguar') }}</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+                        <div class="text-center mb-4">
+                            <span class="badge bg-indigo-subtle text-indigo border border-indigo-subtle rounded-pill fs-13 fw-semibold px-3 py-2"
+                                  style="background-color: #e0e7ff; color: #4338ca; border-color: #c7d2fe;">
+                                {{ $mjetiModal->sherbimi->sherbimi ?? '—' }}
+                            </span>
+                        </div>
 
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Kategoria e Mjetit') }}</label>
-                                <select wire:model.live="modal_kategoria" class="form-select fs-13 py-2 rounded-3">
-                                    @foreach($kategorite as $kategoria)
-                                        <option value="{{ $kategoria->id }}">{{ $kategoria->kategoria }}</option>
-                                    @endforeach
-                                </select>
+                        <div class="col-12">
+                            <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Vlera për t\'u Paguar') }} <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" wire:model="modal_vlera"
+                                       class="form-control fs-14 fw-semibold py-2 rounded-start-3 @error('modal_vlera') is-invalid @enderror" placeholder="0.00">
+                                <span class="input-group-text bg-light text-secondary fw-bold fs-12 rounded-end-3">
+                                    {{ $mjetiModal->monedha->kodi ?? '' }}
+                                </span>
                             </div>
-
-                            <div class="col-6">
-                                <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Monedha') }}</label>
-                                <select wire:model.live="modal_monedha" class="form-select fs-13 py-2 rounded-3">
-                                    @foreach($monedhat as $monedha)
-                                        <option value="{{ $monedha->id }}">{{ $monedha->kodi }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Shërbimi') }}</label>
-                                <select wire:model.live="modal_sherbimi" class="form-select fs-13 py-2 rounded-3 @error('modal_sherbimi') is-invalid @enderror">
-                                    @forelse($sherbimetModal as $sherbimi)
-                                        <option value="{{ $sherbimi->id }}">{{ $sherbimi->sherbimi }}</option>
-                                    @empty
-                                        <option value="">{{ __('Nuk ka shërbime me çmim për këtë kategori') }}</option>
-                                    @endforelse
-                                </select>
-                                @error('modal_sherbimi') <div class="invalid-feedback d-block fs-12">{{ __('Zgjidhni shërbimin.') }}</div> @enderror
-                            </div>
-
-                            <div class="col-12">
-                                <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Vlera për t\'u Paguar') }} <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="number" step="0.01" min="0" wire:model="modal_vlera"
-                                           class="form-control fs-14 fw-semibold py-2 rounded-start-3 @error('modal_vlera') is-invalid @enderror" placeholder="0.00">
-                                    <span class="input-group-text bg-light text-secondary fw-bold fs-12 rounded-end-3">
-                                        {{ collect($monedhat)->firstWhere('id', $modal_monedha)->kodi ?? '' }}
-                                    </span>
-                                </div>
-                                @error('modal_vlera') <div class="invalid-feedback d-block mt-1 fs-12">{{ $message }}</div> @enderror
-                                @if($modal_sherbimi && $modal_vlera === '')
-                                    <div class="text-danger fs-11 mt-1">{{ __('S\'ka çmim të konfiguruar për këtë kombinim. Vendose vlerën me dorë.') }}</div>
-                                @endif
-                            </div>
+                            @error('modal_vlera') <div class="invalid-feedback d-block mt-1 fs-12">{{ $message }}</div> @enderror
                         </div>
                     </div>
 
@@ -638,5 +627,5 @@
             }
         </script>
 </div>
-    @endif
+@endif
 </div>
