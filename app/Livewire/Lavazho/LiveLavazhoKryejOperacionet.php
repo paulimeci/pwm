@@ -10,6 +10,7 @@ use App\Models\Admin\Monedhat;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 use App\Services\Admin\KuponLavazhoService;
@@ -207,17 +208,21 @@ class LiveLavazhoKryejOperacionet extends Component
             return false;
         }
 
-        $operacioni = LavazhoKryejOperacionet::create([
-            'id_operatori'       => Auth::id(),
-            'targa'              => $targaPastruar,
-            'id_operacionit'     => $this->reg_sherbimi,
-            'mjeti_kategoria_id' => $this->reg_kategoria,
-            'id_monedha'         => $this->monedhaDefaultId,
-            'vlera'              => $vlera,
-            'status'             => 'prezent',
-            'pagesa'             => $this->eshte_paguar ? 'po' : 'jo',
-            'nisja'              => now(),
-        ]);
+        // NEW: numri rendor gjenerohet brenda transaksionit, që dy operatorë njëkohësisht të mos marrin të njëjtin numër
+        $operacioni = DB::transaction(function () use ($targaPastruar, $vlera) {
+            return LavazhoKryejOperacionet::create([
+                'id_operatori'       => Auth::id(),
+                'targa'              => $targaPastruar,
+                'nr_rendor'          => $this->nrRendorIRi(),
+                'id_operacionit'     => $this->reg_sherbimi,
+                'mjeti_kategoria_id' => $this->reg_kategoria,
+                'id_monedha'         => $this->monedhaDefaultId,
+                'vlera'              => $vlera,
+                'status'             => 'prezent',
+                'pagesa'             => $this->eshte_paguar ? 'po' : 'jo',
+                'nisja'              => now(),
+            ]);
+        });
 
         if ($this->eshte_paguar) {
             $rezultatiPrintimit = app(KuponLavazhoService::class)->printoFaturen($operacioni, false);
@@ -238,14 +243,24 @@ class LiveLavazhoKryejOperacionet extends Component
         $this->reset('targa', 'reg_kategoria', 'reg_sherbimi', 'eshte_paguar', 'reg_modal_vlera', 'showModalRegPagesa');
         $this->resetErrorBag();
 
+        $nrFormatuar = str_pad($operacioni->nr_rendor, 3, '0', STR_PAD_LEFT);
+
         session()->flash(
             'success',
             $rezultatiPrintimit
-                ? 'Mjeti u regjistrua me sukses si Prezent!'
-                : 'Mjeti u regjistrua! Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth...'
+                ? "Mjeti u regjistrua me sukses! Nr. rendor: {$nrFormatuar}"
+                : "Mjeti u regjistrua (Nr. rendor: {$nrFormatuar})! Printeri LAN nuk u përgjigj — po provohet printimi Bluetooth..."
         );
 
         return true;
+    }
+    private function nrRendorIRi(): int
+    {
+        $maksimumi = LavazhoKryejOperacionet::whereDate('nisja', Carbon::today())
+            ->lockForUpdate()
+            ->max('nr_rendor');
+
+        return ((int) $maksimumi) + 1;
     }
 
 

@@ -168,6 +168,9 @@
                                 <span class="text-secondary fw-medium" style="font-size: 11px;">
                                     {{ $mjeti->nisja->format('H:i') }}
                                 </span>
+                                <span class="badge bg-dark rounded-pill px-2 py-1 fs-10 fw-bold">
+                                    #{{ str_pad($mjeti->nr_rendor ?? 0, 3, '0', STR_PAD_LEFT) }}
+                                </span>
                             </div>
 
                             <div class="d-flex align-items-center gap-2">
@@ -528,6 +531,11 @@
 
                         <table class="table table-sm table-borderless fs-13 mb-0">
                             <tbody>
+                            <tr class="border-bottom border-light">
+                                <td class="text-secondary py-2 fw-medium">{{ __('Nr. Rendor') }}:</td>
+                                <td class="text-dark py-2 fw-bold text-end">#{{ str_pad($mjetiDetaje->nr_rendor ?? 0, 3, '0', STR_PAD_LEFT) }}</td>
+                            </tr>
+
                             <tr class="border-bottom border-light">
                                 <td class="text-secondary py-2 fw-medium">{{ __('Data/Ora Hyrjes') }}:</td>
                                 <td class="text-dark py-2 fw-semibold text-end">{{ $mjetiDetaje->nisja->format('d/m/Y - H:i') }}</td>

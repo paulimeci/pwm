@@ -13,6 +13,7 @@ use App\Models\Admin\Operacionet;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use App\Services\Admin\KuponParkimiService;
+use Illuminate\Support\Facades\DB;
 
 class LiveKryejOperacionet extends Component
 {
@@ -907,6 +908,12 @@ class LiveKryejOperacionet extends Component
             return;
         }
 
+        // NEW: pa fashë/çmim të konfiguruar nuk lejohet ruajtja (kolona id_fashes_orare është NOT NULL)
+        if (!$this->modal_id_fasha) {
+            $this->addError('modal_id_fasha', 'Nuk ka çmim/fashë të konfiguruar për këtë shërbim dhe këtë kategori mjeti. Shtoje te "Konfigurimi i Orëve".');
+            return;
+        }
+
         $tedhenatTransaksionit = [
             'id_operacionit'  => $this->mjetiZgjedhur->id,
             'id_prenotimit'   => $this->modal_id_kategoria,
@@ -919,9 +926,12 @@ class LiveKryejOperacionet extends Component
 
         $vleraEVjeter = $this->transaksioniIRuajtur->vlera ?? null;
 
-        TransaksioniOperacionit::where('id_operacionit', $this->mjetiZgjedhur->id)->delete();
+        // NEW: delete + create në një transaksion, që mos humbasë pagesa e vjetër nëse dështon
+        $transaksioniIRi = \Illuminate\Support\Facades\DB::transaction(function () use ($tedhenatTransaksionit) {
+            TransaksioniOperacionit::where('id_operacionit', $this->mjetiZgjedhur->id)->delete();
 
-        $transaksioniIRi = TransaksioniOperacionit::create($tedhenatTransaksionit);
+            return TransaksioniOperacionit::create($tedhenatTransaksionit);
+        });
 
         if ($this->eshteRegjistrimParaprak) {
             // Printimi i kuponit të parapagesës — LAN, me fallback Bluetooth
@@ -1364,6 +1374,9 @@ class LiveKryejOperacionet extends Component
         $this->shfaqModalFshirje = false;
         $this->mjetiPerFshirje = null;
     }
+
+    // Numri rendor i radhës për sot (rifillon nga 1 çdo ditë, sipas datës së hyrjes)
+
 
     public function render()
     {

@@ -336,6 +336,14 @@
                             @endif
                             </tbody>
                         </table>
+                        @if($fashatOrare->isEmpty() || $errors->has('modal_id_fasha'))
+                            <div class="alert alert-danger fs-12 py-2 mb-3 d-flex align-items-start">
+                                <i class="ri-error-warning-line me-2 fs-16"></i>
+                                <div>
+                                    {{ __('Nuk ka çmim/fashë të konfiguruar për këtë shërbim dhe këtë kategori mjeti (:mjeti). Shtoje te "Konfigurimi i Orëve" ose ndrysho shërbimin.', ['mjeti' => $mjetiZgjedhur->kategoriaMjetit->kategoria ?? '—']) }}
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="row g-3 mt-2">
                             <div class="col-6">

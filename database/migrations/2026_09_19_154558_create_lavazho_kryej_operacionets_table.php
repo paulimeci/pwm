@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('id_operatori');
             $table->string('targa', 20)->index();
+            $table->unsignedBigInteger('nr_rendor');
             $table->unsignedBigInteger('id_operacionit');      // shërbimi (lavazho_larjet_lista)
             $table->unsignedBigInteger('mjeti_kategoria_id');  // kategorite_e_mjeteve
             $table->unsignedBigInteger('id_monedha');
