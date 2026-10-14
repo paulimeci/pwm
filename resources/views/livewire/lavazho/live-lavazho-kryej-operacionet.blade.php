@@ -18,7 +18,7 @@
             <form wire:submit.prevent="ruajOperacionin">
                 <div class="row g-2 align-items-end">
 
-                    <div class="col-12 col-md-3">
+                    <div class="col-12 col-md-2">
                         <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Targa') }} <span class="text-danger">*</span></label>
                         <input type="text" wire:model="targa"
                                class="form-control h-45 rounded-3 fs-13 @error('targa') is-invalid @enderror"
@@ -26,7 +26,7 @@
                         @error('targa') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
                         <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Kategoria e Mjetit') }} <span class="text-danger">*</span></label>
                         <select wire:model.live="reg_kategoria" class="form-select h-45 rounded-3 fs-13 @error('reg_kategoria') is-invalid @enderror">
                             <option value="">-- {{ __('Zgjidh') }} --</option>
@@ -37,7 +37,7 @@
                         @error('reg_kategoria') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
                         <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Shërbimi') }} <span class="text-danger">*</span></label>
                         <select wire:model.live="reg_sherbimi" class="form-select h-45 rounded-3 fs-13 @error('reg_sherbimi') is-invalid @enderror"
                             {{ $reg_kategoria ? '' : 'disabled' }}>
@@ -48,8 +48,16 @@
                         </select>
                         @error('reg_sherbimi') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
-
-                    <div class="col-12 col-md-3">
+                    <div class="col-6 col-md-2">
+                        <label class="label text-secondary fw-medium mb-1 fs-12">{{ __('Monedha') }} <span class="text-danger">*</span></label>
+                        <select wire:model.live="reg_monedha" class="form-select h-45 rounded-3 fs-13 @error('reg_monedha') is-invalid @enderror">
+                            @foreach($monedhat as $monedha)
+                                <option value="{{ $monedha->id }}">{{ $monedha->kodi }}</option>
+                            @endforeach
+                        </select>
+                        @error('reg_monedha') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-6 col-md-3">
                         <div class="d-flex align-items-center gap-2">
                             <div class="d-flex align-items-center justify-content-center border rounded-3 bg-light px-2" style="height: 45px;">
                                 <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-2">
@@ -68,13 +76,7 @@
                     </div>
                 </div>
 
-                @if($cmimiPreview !== null)
-                    <div class="mt-2 fs-12 text-secondary">
-                        {{ __('Çmimi') }}: <b class="text-success">{{ number_format($cmimiPreview, 2) }} ALL</b>
-                    </div>
-                @elseif($reg_kategoria && $reg_sherbimi)
-                    <div class="mt-2 fs-12 text-danger">{{ __('Ky shërbim nuk ka çmim ALL për këtë kategori.') }}</div>
-                @endif
+
             </form>
         </div>
     </div>
@@ -99,7 +101,9 @@
                             <input type="number" step="0.01" min="0" wire:model="reg_modal_vlera"
                                    wire:keydown.enter.prevent="konfirmoModalRegPagesa" autofocus
                                    class="form-control fs-14 fw-semibold py-2 rounded-start-3 @error('reg_modal_vlera') is-invalid @enderror" placeholder="0.00">
-                            <span class="input-group-text bg-light text-secondary fw-bold fs-12 rounded-end-3">ALL</span>
+                            <span class="input-group-text bg-light text-secondary fw-bold fs-12 rounded-end-3">
+    {{ collect($monedhat)->firstWhere('id', $reg_monedha)->kodi ?? '' }}
+</span>
                         </div>
                         @error('reg_modal_vlera') <div class="invalid-feedback d-block mt-1 fs-12">{{ $message }}</div> @enderror
                     </div>

@@ -59,19 +59,29 @@ class LiveLavazhoKryejOperacionet extends Component
     // ── Modali i detajeve (të larguarit) dhe i fshirjes ──
     public $detajeId = null;
     public $fshirjeId = null;
+    public $reg_monedha = '';
 
     public function mount()
     {
         $this->monedhaDefaultId = Monedhat::where('kodi', 'ALL')->value('id');
+        $this->reg_monedha = $this->monedhaDefaultId;
     }
 
     // ═══════════════════════════════════════
     //  NDIHMËSE
     // ═══════════════════════════════════════
-
-    private function pastroTargen(string $targa): string
+    public function updatedRegMonedha()
     {
-        return strtoupper(str_replace(' ', '', $targa));
+        if ($this->showModalRegPagesa) {
+            $cmimi = $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->reg_monedha);
+            $this->reg_modal_vlera = $cmimi ?? '';
+        }
+    }
+    private function pastroTargen(?string $targa): ?string
+    {
+        $pastruar = strtoupper(str_replace(' ', '', (string) $targa));
+
+        return $pastruar === '' ? null : $pastruar;
     }
 
     private function targaEkziston(string $targa, ?int $perjashtoId = null): bool
@@ -135,13 +145,9 @@ class LiveLavazhoKryejOperacionet extends Component
 
         $this->resetErrorBag();
 
-        // Modali hapet vetëm nëse fushat bazë janë plotësuar
+        // Modali hapet vetëm nëse kategoria dhe shërbimi janë zgjedhur (targa është opsionale)
         $mungon = false;
 
-        if (trim((string) $this->targa) === '') {
-            $this->addError('targa', 'Ju lutem vendosni targën e makinës.');
-            $mungon = true;
-        }
         if (! $this->reg_kategoria) {
             $this->addError('reg_kategoria', 'Zgjidhni kategorinë e mjetit.');
             $mungon = true;
@@ -150,13 +156,17 @@ class LiveLavazhoKryejOperacionet extends Component
             $this->addError('reg_sherbimi', 'Zgjidhni shërbimin.');
             $mungon = true;
         }
+        if (! $this->reg_monedha) {
+            $this->addError('reg_monedha', 'Zgjidhni monedhën.');
+            $mungon = true;
+        }
 
         if ($mungon) {
             $this->eshte_paguar = false;
             return;
         }
 
-        $cmimi = $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->monedhaDefaultId);
+        $cmimi = $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->reg_monedha);
 
         $this->reg_modal_vlera = $cmimi ?? '';
         $this->showModalRegPagesa = true;
@@ -185,30 +195,33 @@ class LiveLavazhoKryejOperacionet extends Component
     private function regjistroOperacionin(?float $vleraManuale = null): bool
     {
         $this->validate([
-            'targa'         => 'required|string|max:20',
+            'targa'         => 'nullable|string|max:20',
             'reg_kategoria' => 'required|exists:kategorite_e_mjeteve,id',
             'reg_sherbimi'  => 'required|exists:lavazho_larjet_lista,id',
+            'reg_monedha'   => 'required|exists:adm_monedhat,id', // ndrysho emrin e tabelës nëse është ndryshe
         ], [
-            'targa.required'         => 'Ju lutem vendosni targën e makinës.',
             'reg_kategoria.required' => 'Zgjidhni kategorinë e mjetit.',
             'reg_sherbimi.required'  => 'Zgjidhni shërbimin.',
+            'reg_monedha.required'   => 'Zgjidhni monedhën.',
         ]);
 
         $targaPastruar = $this->pastroTargen($this->targa);
 
-        if ($this->targaEkziston($targaPastruar)) {
+        // Kontrolli për dublikim bëhet vetëm kur është vendosur targë
+        if ($targaPastruar !== null && $this->targaEkziston($targaPastruar)) {
             $this->addError('targa', 'Kjo targë është tashmë e regjistruar si "Prezent" në lavazho.');
             return false;
         }
 
-        $vlera = $vleraManuale ?? $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->monedhaDefaultId);
+        $vlera = $vleraManuale ?? $this->gjejCmimin($this->reg_sherbimi, $this->reg_kategoria, $this->reg_monedha);
 
         if ($vlera === null) {
-            $this->addError('reg_sherbimi', 'Ky shërbim nuk ka çmim të konfiguruar për këtë kategori (ALL).');
+            $kodi = Monedhat::find($this->reg_monedha)?->kodi ?? '';
+            $this->addError('reg_sherbimi', "Ky shërbim nuk ka çmim të konfiguruar për këtë kategori ({$kodi}).");
             return false;
         }
 
-        // NEW: numri rendor gjenerohet brenda transaksionit, që dy operatorë njëkohësisht të mos marrin të njëjtin numër
+        // Numri rendor gjenerohet brenda transaksionit, që dy operatorë njëkohësisht të mos marrin të njëjtin numër
         $operacioni = DB::transaction(function () use ($targaPastruar, $vlera) {
             return LavazhoKryejOperacionet::create([
                 'id_operatori'       => Auth::id(),
@@ -216,7 +229,7 @@ class LiveLavazhoKryejOperacionet extends Component
                 'nr_rendor'          => $this->nrRendorIRi(),
                 'id_operacionit'     => $this->reg_sherbimi,
                 'mjeti_kategoria_id' => $this->reg_kategoria,
-                'id_monedha'         => $this->monedhaDefaultId,
+                'id_monedha'         => $this->reg_monedha,
                 'vlera'              => $vlera,
                 'status'             => 'prezent',
                 'pagesa'             => $this->eshte_paguar ? 'po' : 'jo',
@@ -241,6 +254,7 @@ class LiveLavazhoKryejOperacionet extends Component
         }
 
         $this->reset('targa', 'reg_kategoria', 'reg_sherbimi', 'eshte_paguar', 'reg_modal_vlera', 'showModalRegPagesa');
+        $this->reg_monedha = $this->monedhaDefaultId; // hiqe këtë rresht nëse do që monedha të mbetet e zgjedhur
         $this->resetErrorBag();
 
         $nrFormatuar = str_pad($operacioni->nr_rendor, 3, '0', STR_PAD_LEFT);
@@ -406,14 +420,13 @@ class LiveLavazhoKryejOperacionet extends Component
     public function ruajEditimin()
     {
         $this->validate([
-            'edit_targa'     => 'required|string|max:20',
+            'edit_targa'     => 'nullable|string|max:20',
             'edit_nisja'     => 'required|date',
             'edit_kategoria' => 'required|exists:kategorite_e_mjeteve,id',
             'edit_sherbimi'  => 'required|exists:lavazho_larjet_lista,id',
             'edit_monedha'   => 'required',
             'edit_vlera'     => 'required|numeric|min:0',
         ], [
-            'edit_targa.required' => 'Ju lutem vendosni targën.',
             'edit_nisja.required' => 'Ju lutem vendosni orën e hyrjes.',
             'edit_vlera.required' => 'Ju lutem vendosni vlerën.',
         ]);
@@ -426,7 +439,7 @@ class LiveLavazhoKryejOperacionet extends Component
 
         $targaPastruar = $this->pastroTargen($this->edit_targa);
 
-        if ($op->status === 'prezent' && $this->targaEkziston($targaPastruar, $op->id)) {
+        if ($targaPastruar !== null && $op->status === 'prezent' && $this->targaEkziston($targaPastruar, $op->id)) {
             $this->addError('edit_targa', 'Kjo targë është tashmë e regjistruar si "Prezent".');
             return;
         }

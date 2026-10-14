@@ -127,6 +127,7 @@
                             <th scope="col">{{ __('Pagesa Lek') }}</th>
                             <th scope="col">{{ __('Monedha të tjera') }}</th>
                             <th scope="col" style="width: 140px;">{{ __('Veprimi') }}</th>
+
                         </tr>
                         </thead>
                         <tbody>
@@ -157,12 +158,22 @@
                                         <span class="text-muted fs-12">-</span>
                                     @endif
                                 </td>
+
                                 <td>
-                                    <button type="button"
-                                            wire:click="shfaqDetajetEDates('{{ $rreshti['data'] }}')"
-                                            class="btn btn-sm btn-light border border-light-subtle text-primary fw-semibold px-3 d-inline-flex align-items-center gap-1">
-                                        <i class="ri-eye-line fs-14"></i> Detaje
-                                    </button>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <button type="button"
+                                                wire:click="shfaqDetajetEDates('{{ $rreshti['data'] }}')"
+                                                class="btn btn-sm btn-light border border-light-subtle text-primary fw-semibold px-3 d-inline-flex align-items-center gap-1">
+                                            <i class="ri-eye-line fs-14"></i> Detaje
+                                        </button>
+                                        <button type="button"
+                                                wire:click="printoRaportDitor('{{ $rreshti['data'] }}')"
+                                                title="{{ __('Printo raportin e ditës') }}"
+                                                class="btn btn-sm btn-light border border-light-subtle text-success px-2 d-inline-flex align-items-center">
+                                            <span wire:loading wire:target="printoRaportDitor" class="spinner-border spinner-border-sm"></span>
+                                            <i class="ri-printer-line fs-14" wire:loading.remove wire:target="printoRaportDitor">Raport Ditor</i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -445,3 +456,12 @@
         </div>
     @endif
 </div>
+<script>
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('printo-ne-bluetooth', (event) => {
+            if (!event.rawContent) return;
+            const base64Content = btoa(unescape(encodeURIComponent(event.rawContent)));
+            window.location.href = 'rawbt:base64,' + base64Content;
+        });
+    });
+</script>

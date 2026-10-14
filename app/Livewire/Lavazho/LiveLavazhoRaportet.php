@@ -5,6 +5,8 @@ namespace App\Livewire\Lavazho;
 use App\Models\Admin\Monedhat;
 use App\Models\Admin\LavazhoKryejOperacionet;
 use App\Models\User;
+use App\Services\Admin\KuponParkimiService;
+use App\Services\Admin\KuponRaportLavazhoService;
 use Carbon\Carbon;
 use Livewire\Component;
 
@@ -293,6 +295,24 @@ class LiveLavazhoRaportet extends Component
         }
 
         return $totalet;
+    }
+    public function printoRaportDitor(?string $data = null)
+    {
+        $teksti = $data ?: $this->dataEPerzgjedhur;
+
+        // Pranon si 2026-10-14 ashtu edhe 14/10/2026
+        $dita = str_contains((string) $teksti, '/')
+            ? Carbon::createFromFormat('d/m/Y', $teksti)
+            : Carbon::parse($teksti);
+
+        $operatoriId = $this->operatoriZgjedhur ? (int) $this->operatoriZgjedhur : null;
+
+        $service = app(KuponRaportLavazhoService::class);
+
+        if (! $service->printoRaportin($dita, $operatoriId)) {
+            // Printeri LAN nuk u përgjigj — provo Bluetooth (RawBT)
+            $this->dispatch('printo-ne-bluetooth', rawContent: $service->buildRaportRaw($dita, $operatoriId));
+        }
     }
 
     public function render()

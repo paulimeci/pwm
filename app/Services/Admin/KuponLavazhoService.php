@@ -130,10 +130,13 @@ class KuponLavazhoService
         }
 
         // Targa
-        $content .= $this->textDoubleHeightOn();
-        $content .= $this->centerLine($this->normalizeText($operacioni->targa));
-        $content .= $this->textDoubleHeightOff();
-        $content .= $this->separator('-');
+        // Targa (opsionale)
+        if (!empty($operacioni->targa)) {
+            $content .= $this->textDoubleHeightOn();
+            $content .= $this->centerLine($this->normalizeText($operacioni->targa));
+            $content .= $this->textDoubleHeightOff();
+            $content .= $this->separator('-');
+        }
 
         // Detajet
         $content .= $this->alignLeft();
@@ -188,11 +191,13 @@ class KuponLavazhoService
         $content .= $this->textEmphasizedOff();
         $content .= $this->separator('=');
 
-        // Targa
-        $content .= $this->textDoubleHeightOn();
-        $content .= $this->centerLine($this->normalizeText($operacioni->targa));
-        $content .= $this->textDoubleHeightOff();
-        $content .= $this->separator('-');
+        // Targa (opsionale)
+        if (!empty($operacioni->targa)) {
+            $content .= $this->textDoubleHeightOn();
+            $content .= $this->centerLine($this->normalizeText($operacioni->targa));
+            $content .= $this->textDoubleHeightOff();
+            $content .= $this->separator('-');
+        }
 
         // Detajet
         $content .= $this->alignLeft();
@@ -317,9 +322,9 @@ class KuponLavazhoService
             : $text;
     }
 
-    protected function normalizeText(string $text): string
+    protected function normalizeText(?string $text): string
     {
-        $text = trim($text);
+        $text = trim((string) $text);
 
         $map = [
             'ë' => 'e', 'Ë' => 'E',
