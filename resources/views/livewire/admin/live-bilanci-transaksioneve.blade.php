@@ -161,11 +161,14 @@
                                     @endif
                                 </td>
                                 {{-- KORRIGJIMI: Hoqëm text-end dhe vendosëm gjerësi që të rrijë afër të dhënave --}}
-                                <td>
-                                    <button type="button"
-                                            wire:click="shfaqDetajetEDates('{{ $rreshti['data'] }}')"
+                                <<td style="width: 260px;">
+                                    <button type="button" wire:click="shfaqDetajetEDates('{{ $rreshti['data'] }}')"
                                             class="btn btn-sm btn-light border border-light-subtle text-primary fw-semibold px-3 d-inline-flex align-items-center gap-1">
                                         <i class="ri-eye-line fs-14"></i> Detaje
+                                    </button>
+                                    <button type="button" wire:click="shfaqRaportinDitor('{{ $rreshti['data'] }}')"
+                                            class="btn btn-sm btn-light border border-light-subtle text-success fw-semibold px-3 d-inline-flex align-items-center gap-1">
+                                        <i class="ri-printer-line fs-14"></i> Mbyllja
                                     </button>
                                 </td>
                             </tr>
@@ -314,6 +317,62 @@
             </div>
         </div>
     @endif
+    @if($shfaqModalRaportDitor && !empty($raportiDitor))
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1055;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 bg-white shadow rounded-3">
+                    <div class="modal-header border-bottom p-4">
+                        <h5 class="modal-title fs-16 fw-semibold">
+                            <i class="ri-file-list-3-line text-success me-1"></i>
+                            Mbyllja Ditore: {{ $raportiDitor['data'] }}
+                        </h5>
+                        <button type="button" class="btn-close shadow-none" wire:click="mbyllRaportinDitor"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <p class="text-secondary fs-12 mb-3">Operatori: <b>{{ $raportiDitor['operatori'] }}</b></p>
+
+                        <table class="table table-sm table-borderless fs-13 mb-0">
+                            <tbody>
+                            @foreach($raportiDitor['kategorite'] as $k)
+                                <tr class="border-bottom border-light">
+                                    <td class="py-2 fw-semibold text-dark">
+                                        {{ $k['emri'] }}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">{{ $k['nr'] }} mjete</span>
+                                    </td>
+                                    <td class="py-2 text-end fw-bold">
+                                        @foreach($k['monedhat'] as $kodi => $vlera)
+                                            <div>{{ number_format($vlera, 2) }} {{ $kodi }}</div>
+                                        @endforeach
+                                    </td>
+                                </tr>
+                            @endforeach
+
+                            <tr class="bg-success bg-opacity-10">
+                                <td class="py-2 ps-2 fw-bold text-success">Mjete të shërbyera</td>
+                                <td class="py-2 pe-2 text-end fw-bold text-success">{{ $raportiDitor['totali_mjete'] }}</td>
+                            </tr>
+                            @foreach($raportiDitor['totalet'] as $kodi => $vlera)
+                                <tr class="bg-success bg-opacity-10">
+                                    <td class="py-2 ps-2 fw-bold text-success">TOTALI</td>
+                                    <td class="py-2 pe-2 text-end fw-bolder text-success fs-15">{{ number_format($vlera, 2) }} {{ $kodi }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="modal-footer border-top p-3 d-flex justify-content-between bg-light bg-opacity-50">
+                        <button type="button" class="btn btn-primary fs-13 fw-semibold rounded-3" wire:click="printoRaportinDitor">
+                            <span wire:loading wire:target="printoRaportinDitor" class="spinner-border spinner-border-sm me-1"></span>
+                            <i class="ri-printer-line me-1"></i> Printo Kuponin
+                        </button>
+                        <button type="button" class="btn btn-secondary fs-13 fw-semibold rounded-3" wire:click="mbyllRaportinDitor">Mbyll</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- ═══════════════════════════════════════
           MODAL I DYTË: EDITO / FSHIJ TRANSAKSIONIN
@@ -419,3 +478,12 @@
         </div>
     @endif
 </div>
+<script>
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('printo-ne-bluetooth', (event) => {
+            if (!event.rawContent) return;
+            const b64 = btoa(unescape(encodeURIComponent(event.rawContent)));
+            window.location.href = 'rawbt:base64,' + b64;
+        });
+    });
+</script>

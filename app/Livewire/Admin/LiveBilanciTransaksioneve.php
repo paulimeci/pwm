@@ -43,6 +43,8 @@ class LiveBilanciTransaksioneve extends Component
     public $editKategoria;
     public $editIdFasha;
     public $editFashatOrare = [];
+    public $shfaqModalRaportDitor = false;
+    public $raportiDitor = [];
 
     public function mount()
     {
@@ -354,7 +356,73 @@ class LiveBilanciTransaksioneve extends Component
             $this->editVlera = $cmimiNjesi;
         }
     }
+    public function shfaqRaportinDitor($data)
+    {
+        $this->raportiDitor = $this->ndertoRaportinDitor($data);
+        $this->shfaqModalRaportDitor = true;
+    }
 
+    public function mbyllRaportinDitor()
+    {
+        $this->shfaqModalRaportDitor = false;
+        $this->raportiDitor = [];
+    }
+
+    private function ndertoRaportinDitor(string $data): array
+    {
+        $baza = TransaksioniOperacionit::query()
+            ->join('adm_operacionet', 'adm_transaksioni_operacionit.id_operacionit', '=', 'adm_operacionet.id')
+            ->join('adm_monedhat', 'adm_transaksioni_operacionit.monedha', '=', 'adm_monedhat.id')
+            ->join('adm_kategoria_pageses', 'adm_transaksioni_operacionit.id_prenotimit', '=', 'adm_kategoria_pageses.id')
+            ->whereRaw('DATE(adm_operacionet.ikja) = ?', [$data])
+            ->when($this->operatoriZgjedhur, fn ($q) =>
+            $q->where('adm_operacionet.id_operatori', $this->operatoriZgjedhur));
+
+        // Shuma sipas kategorisë + monedhës
+        $rreshtat = (clone $baza)
+            ->selectRaw('adm_kategoria_pageses.kategoria as kategoria')
+            ->selectRaw('adm_monedhat.kodi as monedha')
+            ->selectRaw('COUNT(DISTINCT adm_transaksioni_operacionit.id_operacionit) as nr_mjete')
+            ->selectRaw('SUM(adm_transaksioni_operacionit.vlera) as total')
+            ->groupBy('adm_kategoria_pageses.kategoria', 'adm_monedhat.kodi')
+            ->get();
+
+        $kategorite = [];
+        $totalet = [];
+
+        foreach ($rreshtat as $r) {
+            $kategorite[$r->kategoria]['emri'] = $r->kategoria;
+            $kategorite[$r->kategoria]['nr'] = max($kategorite[$r->kategoria]['nr'] ?? 0, (int) $r->nr_mjete);
+            $kategorite[$r->kategoria]['monedhat'][$r->monedha] = (float) $r->total;
+
+            $totalet[$r->monedha] = ($totalet[$r->monedha] ?? 0) + (float) $r->total;
+        }
+
+        // Totali i mjeteve = operacione unike (një mjet me pagesë shtesë nuk numërohet dy herë)
+        $totaliMjeteve = (clone $baza)->distinct()->count('adm_transaksioni_operacionit.id_operacionit');
+
+        return [
+            'data'          => Carbon::parse($data)->format('d/m/Y'),
+            'operatori'     => $this->operatoriZgjedhur
+                ? (\App\Models\User::find($this->operatoriZgjedhur)?->name ?? '')
+                : 'Te gjithe',
+            'kategorite'    => array_values($kategorite),
+            'totali_mjete'  => $totaliMjeteve,
+            'totalet'       => $totalet,
+        ];
+    }
+
+    public function printoRaportinDitor()
+    {
+        if (empty($this->raportiDitor)) return;
+
+        $service = app(\App\Services\Admin\KuponParkimiService::class);
+        $raw = $service->buildMbylljaDitoreRaw($this->raportiDitor);
+
+        if (!$service->sendRaw($raw)) {
+            $this->dispatch('printo-ne-bluetooth', rawContent: $raw);
+        }
+    }
     public function render()
     {
         [$fillimi, $fundi] = $this->resolveDateRange();

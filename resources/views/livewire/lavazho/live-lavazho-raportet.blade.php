@@ -171,7 +171,7 @@
                                                 title="{{ __('Printo raportin e ditës') }}"
                                                 class="btn btn-sm btn-light border border-light-subtle text-success px-2 d-inline-flex align-items-center">
                                             <span wire:loading wire:target="printoRaportDitor" class="spinner-border spinner-border-sm"></span>
-                                            <i class="ri-printer-line fs-14" wire:loading.remove wire:target="printoRaportDitor">Raport Ditor</i>
+                                            <i class="ri-printer-line fs-14" wire:loading.remove wire:target="printoRaportDitor">Mbyllja</i>
                                         </button>
                                     </div>
                                 </td>

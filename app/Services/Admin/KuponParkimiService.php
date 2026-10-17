@@ -539,4 +539,40 @@ class KuponParkimiService
         }
     }
 
+    public function buildMbylljaDitoreRaw(array $raporti): string
+    {
+        $w = $this->paperWidth;
+        $n = fn (string $t) => $this->normalizeText($t);
+        $rresht = function (string $l, string $r) use ($w, $n) {
+            $l = $n($l); $r = $n($r);
+            $space = max($w - mb_strlen($l) - mb_strlen($r), 1);
+            return $l . str_repeat(' ', $space) . $r . "\n";
+        };
+
+        $raw  = $this->initPrinter() . $this->alignCenter();
+        $raw .= $this->textEmphasizedOn() . "MBYLLJA DITORE\n" . $this->textEmphasizedOff();
+        $raw .= $n('Data: ' . $raporti['data']) . "\n";
+        $raw .= $n('Operatori: ' . $raporti['operatori']) . "\n";
+        $raw .= $this->separator('-') . $this->alignLeft();
+
+        foreach ($raporti['kategorite'] as $k) {
+            $raw .= $this->textEmphasizedOn() . $n($k['emri'] . ' (' . $k['nr'] . ' mjete)') . "\n" . $this->textEmphasizedOff();
+            foreach ($k['monedhat'] as $kodi => $vlera) {
+                $raw .= $rresht('', number_format($vlera, 2) . ' ' . $kodi);
+            }
+        }
+
+        $raw .= $this->separator('-');
+        $raw .= $this->textEmphasizedOn();
+        $raw .= $rresht('MJETE TOTAL:', (string) $raporti['totali_mjete']);
+        foreach ($raporti['totalet'] as $kodi => $vlera) {
+            $raw .= $rresht('TOTALI:', number_format($vlera, 2) . ' ' . $kodi);
+        }
+        $raw .= $this->textEmphasizedOff() . "\n";
+        $raw .= $n('Printuar: ' . now()->format('d/m/Y H:i')) . "\n\n\n";
+        $raw .= $this->cutPaper();
+
+        return $raw;
+    }
+
 }
